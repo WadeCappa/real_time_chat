@@ -1,2 +1,3 @@
 frontend/venv
 rontend/__pycache__
+.env

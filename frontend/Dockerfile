@@ -1,11 +1,14 @@
+# syntax=docker/dockerfile:1
 
 FROM python:3.9.20
 
-WORKDIR /usr/src/app
+WORKDIR /code
 
 RUN pip3 install flask
 RUN pip3 install gunicorn
 
 COPY . ./
 
-CMD ["gunicorn", "-w", "1", "hello_world:app"]
+EXPOSE 8000
+
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0", "hello_world:app"]
