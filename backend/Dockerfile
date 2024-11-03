@@ -6,9 +6,6 @@ WORKDIR /app
 
 COPY . .
 
-ENV GIN_MODE = 'release'
-ENV PORT = '8080'
-
 RUN go mod download
 RUN go build -o /backend
 
