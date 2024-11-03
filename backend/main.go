@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -35,22 +36,24 @@ func toJson(messages []message) gin.H {
 func main() {
 	var messages []message
 
+	mode := os.Getenv("GIN_MODE")
+
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
-
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://cantseewater.online", "http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
-		AllowCredentials: true,
-		AllowOriginFunc: func(origin string) bool {
-			return true
-		},
-		MaxAge: 12 * time.Hour,
-	}))
-
 	r.SetTrustedProxies(nil)
+
+	config := cors.DefaultConfig()
+	config.AllowMethods = []string{"GET", "POST"}
+	config.AllowOriginFunc = func(origin string) bool {
+		switch mode {
+		case "release":
+			return origin == "https://cantseewater.online"
+		default:
+			return origin == "localhost:3000"
+		}
+	}
+	r.Use(cors.New(config))
 
 	r.POST("/write", func(c *gin.Context) {
 

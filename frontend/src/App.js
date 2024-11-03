@@ -1,4 +1,5 @@
 import AllMessages from "./AllMessages";
+import MessageForm from "./MessageForm";
 
 function App() {
   return (

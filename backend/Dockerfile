@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY . .
 
+ENV GIN_MODE=release
+
 RUN go mod download
 RUN go build -o /backend
 
