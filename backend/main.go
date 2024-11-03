@@ -36,12 +36,14 @@ func toJson(messages *sql.Rows) gin.H {
 	var res []gin.H
 	for messages.Next() {
 		var content string
-		var timePosted int
-		if err := messages.Scan(&content, &timePosted); err != nil {
+		var timePosted int64
+		if err := messages.Scan(&content, &timePosted); err == nil {
 			res = append(res, gin.H{
 				"content":    content,
 				"timePosted": timePosted,
 			})
+		} else {
+			fmt.Println(err)
 		}
 	}
 	return gin.H{
@@ -50,7 +52,7 @@ func toJson(messages *sql.Rows) gin.H {
 }
 
 func getRows(conn *sql.DB) gin.H {
-	res, err := conn.Query("select * from user_post")
+	res, err := conn.Query("select content, time_posted from user_post")
 	defer res.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -60,13 +62,12 @@ func getRows(conn *sql.DB) gin.H {
 }
 
 func main() {
-	mode := os.Getenv("GIN_MODE")
-
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
+	mode := os.Getenv("GIN_MODE")
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST"}
 	config.AllowOriginFunc = func(origin string) bool {
@@ -76,6 +77,7 @@ func main() {
 		default:
 			return origin == "localhost:3000"
 		}
+
 	}
 	r.Use(cors.New(config))
 
