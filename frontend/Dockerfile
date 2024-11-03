@@ -2,7 +2,7 @@
 
 FROM python:3.9.20
 
-WORKDIR /code
+WORKDIR /app
 
 RUN pip3 install flask
 RUN pip3 install gunicorn
