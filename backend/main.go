@@ -38,6 +38,8 @@ func main() {
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
 
+	r.SetTrustedProxies(nil)
+
 	r.POST("/write", func(c *gin.Context) {
 
 		var messagePost messagePostRequest

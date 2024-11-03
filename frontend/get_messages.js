@@ -1,9 +1,8 @@
 function getHello() {
-    const url = 'http://'
+    const url = 'https://api.cantseewater.online/get'
     fetch(url)
     .then(response => response.json())  
     .then(json => {
         console.log(json);
-        document.getElementById("demo").innerHTML = JSON.stringify(json)
     })
 }

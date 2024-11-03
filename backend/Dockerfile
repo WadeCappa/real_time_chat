@@ -6,11 +6,12 @@ FROM golang:1.23.2-bookworm
 WORKDIR /app
 
 COPY . .
+
+ENV GIN_MODE = 'release'
+ENV PORT = '8080'
+
 RUN go mod download
 RUN go build -o /backend
-
-# set to prod
-RUN export GIN_MODE=release 
 
 EXPOSE 8080
 
