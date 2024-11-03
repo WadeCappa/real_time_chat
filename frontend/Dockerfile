@@ -6,7 +6,9 @@ WORKDIR /app
 COPY . .
 
 RUN npm install
+RUN npm run build 
+RUN npm install -g serve
 
 EXPOSE 8000
 
-CMD ["npm", "start"]
+CMD ["serve", "-s", "-p", "8000", "build"]
