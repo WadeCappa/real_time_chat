@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	xss "github.com/sahilchopra/gin-gonic-xss-middleware"
 )
@@ -37,6 +38,17 @@ func main() {
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://cantseewater.online", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
+		AllowCredentials: true,
+		AllowOriginFunc: func(origin string) bool {
+			return true
+		},
+		MaxAge: 12 * time.Hour,
+	}))
 
 	r.SetTrustedProxies(nil)
 
