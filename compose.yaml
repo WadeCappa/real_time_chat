@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=/run/secrets/postgres_db_user
       - POSTGRES_DB=/run/secrets/postgres_db
     volumes: 
-      - db:/var/lib/postgresql/data
+      - db_volume:/var/lib/postgresql/data
   backend:
     build: backend 
     ports:
@@ -20,6 +20,8 @@ services:
       - PGUSER=/run/secrets/postgres_db_user
       - POSTGRES_DB=/run/secrets/postgres_db
       - MODE=$MODE
+    depends_on:
+      - db
   frontend:
     build: 
       context: frontend
@@ -27,7 +29,7 @@ services:
         - MODE=$MODE
     ports:
       - "3000:3000"
-    links:
+    depends_on:
       - backend
   caddy:
     image: caddy:2.8.4-alpine
@@ -45,5 +47,5 @@ secrets:
   postgres_db_password:
     file: secrets/postgres_pass.txt
 volumes:
-  db:
+  db_volume:
     driver: local
