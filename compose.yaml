@@ -39,8 +39,8 @@ services:
       - "443:443"
     volumes:
       - $PWD/caddy/Caddyfile:/etc/caddy/Caddyfile
-      - $PWD/caddy/data:/data
-      - $PWD/caddy/caddy_config:/config
+      - caddy_data:/data
+      - caddy_config:/config
 secrets:
   postgres_db:
     file: secrets/postgres_db.txt
@@ -50,4 +50,5 @@ secrets:
     file: secrets/postgres_pass.txt
 volumes:
   db_volume:
-    driver: local
+  caddy_data:
+  caddy_config:
