@@ -34,11 +34,13 @@ services:
   caddy:
     image: caddy:2.8.4-alpine
     restart: unless-stopped
-    volumes:
-      - $PWD/caddy/Caddyfile:/etc/caddy/Caddyfile
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - $PWD/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - $PWD/caddy/data:/data
+      - $PWD/caddy/caddy_config:/config
 secrets:
   postgres_db:
     file: secrets/postgres_db.txt
