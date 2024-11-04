@@ -19,10 +19,14 @@ services:
       - POSTGRES_USER=/run/secrets/postgres_db_user
       - PGUSER=/run/secrets/postgres_db_user
       - POSTGRES_DB=/run/secrets/postgres_db
+      - MODE=$MODE
   frontend:
-    build: frontend
+    build: 
+      context: frontend
+      args:
+        - MODE=$MODE
     ports:
-      - "8000:8000"
+      - "3000:3000"
     links:
       - backend
   caddy:

@@ -5,10 +5,14 @@ WORKDIR /app
 
 COPY . .
 
+ARG MODE
+
 RUN npm install
-RUN npm run build 
 RUN npm install -g serve
+
+RUN ./setup_env.sh $MODE
+RUN npm run build 
 
 EXPOSE 8000
 
-CMD ["serve", "-s", "-p", "8000", "build"]
+CMD ["serve", "-s", "-p", "3000", "build"]

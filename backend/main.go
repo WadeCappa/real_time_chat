@@ -67,15 +67,20 @@ func main() {
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
-	mode := os.Getenv("GIN_MODE")
+	mode := os.Getenv("MODE")
+	fmt.Println(mode)
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST"}
 	config.AllowOriginFunc = func(origin string) bool {
+		fmt.Println(origin)
 		switch mode {
-		case "release":
+		case "production":
 			return origin == "https://cantseewater.online"
+		case "local":
+			return origin == "http://localhost:3000"
 		default:
-			return origin == "localhost:3000"
+			fmt.Println(fmt.Errorf("did not recognize the deployement mode: %s", mode))
+			return false
 		}
 
 	}

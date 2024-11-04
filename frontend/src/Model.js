@@ -3,7 +3,15 @@ const apiUrl = 'https://api.cantseewater.online';
 const devUrl = 'http://localhost:8080'
 
 function getUrl() {
-    return process.env.NODE_ENV === "production" ? apiUrl : devUrl
+    switch (process.env.REACT_APP_DEPLOYMENT) {
+        case "production":
+            return apiUrl;
+        case "local":
+            return devUrl;
+        default:
+            console.error(process.env.REACT_APP_DEPLOYMENT)
+            throw new Error("Unrecognized deployement type")
+    }
 }
 
 export function GetMessages(setter) {

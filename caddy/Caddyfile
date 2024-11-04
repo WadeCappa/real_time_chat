@@ -1,7 +1,7 @@
 
 
 cantseewater.online {
-	reverse_proxy frontend:8000
+	reverse_proxy frontend:3000
 }
 
 api.cantseewater.online {
