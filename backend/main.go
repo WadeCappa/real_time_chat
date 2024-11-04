@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -15,6 +16,11 @@ import (
 
 type messagePostRequest struct {
 	Content string `form:"content" json:"content" xml:"content" binding:"required"`
+}
+
+type message struct {
+	Content    string
+	TimePosted time.Time
 }
 
 func runWithDb(consumer func(*sql.DB)) {
@@ -32,33 +38,34 @@ func runWithDb(consumer func(*sql.DB)) {
 	consumer(db)
 }
 
-func toJson(messages *sql.Rows) gin.H {
-	var res []gin.H
+func asMessages(messages *sql.Rows) []message {
+	var res []message
 	for messages.Next() {
 		var content string
 		var timePosted int64
 		if err := messages.Scan(&content, &timePosted); err == nil {
-			res = append(res, gin.H{
-				"content":    content,
-				"timePosted": timePosted,
+			res = append(res, message{
+				content,
+				time.Unix(0, timePosted*int64(time.Millisecond)),
 			})
 		} else {
 			fmt.Println(err)
 		}
 	}
-	return gin.H{
-		"messages": res,
-	}
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].TimePosted.After(res[j].TimePosted)
+	})
+	return res
 }
 
-func getRows(conn *sql.DB) gin.H {
+func getMessages(conn *sql.DB) []message {
 	res, err := conn.Query("select content, time_posted from user_post")
 	defer res.Close()
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(res)
-	return toJson(res)
+	return asMessages(res)
 }
 
 func main() {
@@ -82,7 +89,6 @@ func main() {
 			fmt.Println(fmt.Errorf("did not recognize the deployement mode: %s", mode))
 			return false
 		}
-
 	}
 	r.Use(cors.New(config))
 
@@ -103,13 +109,13 @@ func main() {
 			res, err := conn.Exec(query)
 			fmt.Println(res)
 			fmt.Println(err)
-			c.JSON(http.StatusOK, getRows(conn))
+			c.JSON(http.StatusOK, getMessages(conn))
 		})
 	})
 
 	r.GET("/get", func(c *gin.Context) {
 		runWithDb(func(conn *sql.DB) {
-			c.JSON(http.StatusOK, getRows(conn))
+			c.JSON(http.StatusOK, getMessages(conn))
 		})
 	})
 

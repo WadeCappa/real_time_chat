@@ -1,9 +1,9 @@
 
-export default function Message({content, timeAsMillis}) {
+export default function Message({content, time}) {
   return (
     <div>
-        <p>posted at {timeAsMillis}</p>
         <p>{content}</p>
+        <p>posted at {time}</p>
     </div>
   );
 }
