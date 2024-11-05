@@ -100,13 +100,10 @@ func main() {
 		}
 
 		timePosted := time.Now()
-
-		fmt.Printf("received new message: %s; posted at %s", messagePost.Content, timePosted.Format("ANSIC"))
+		fmt.Println(messagePost.Content)
 
 		runWithDb(func(conn *sql.DB) {
-			query := fmt.Sprintf("insert into user_post (time_posted, content) values (%d, '%s')", timePosted.UnixMilli(), messagePost.Content)
-			fmt.Println(query)
-			res, err := conn.Exec(query)
+			res, err := conn.Query("insert into user_post (time_posted, content) values ($1, $2)", timePosted.UnixMilli(), messagePost.Content)
 			fmt.Println(res)
 			fmt.Println(err)
 			c.JSON(http.StatusOK, getMessages(conn))

@@ -10,7 +10,7 @@ export default function MessageForm({setter}) {
     }
 
     return (
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{margin: '8px', marginBottom: '20px'}}>
         <label> Enter your message
           <input 
             type="text" 

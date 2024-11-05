@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import Message from "./Message";
 import { GetMessages } from "./Model";
 import MessageForm from "./MessageForm";
 
@@ -10,8 +9,21 @@ export default function AllMessages() {
 
   return (
     <div>
-      <MessageForm setter={setMessages}/>
-      {messages ? <pre>{JSON.stringify(messages, null, 2)}</pre> : 'Loading...'}
+      <MessageForm setter={setMessages} />
+      <table >
+        <tr>
+          <th>Message</th>
+          <th>Time Posted</th>
+        </tr>
+        {messages ? messages.map(message => {
+          return (
+            <tr>
+              <td>{message.Content}</td>
+              <td>{message.TimePosted}</td>
+            </tr>
+          )
+        }) : 'Loading...'}
+      </table> 
     </div>
   )
 }
