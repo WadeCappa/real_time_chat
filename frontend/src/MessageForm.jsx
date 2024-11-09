@@ -7,6 +7,7 @@ export default function MessageForm({setter}) {
     const handleSubmit = (event) => {
         event.preventDefault();
         PostMessage(setter, message)
+        setMessage("")
     }
 
     return (

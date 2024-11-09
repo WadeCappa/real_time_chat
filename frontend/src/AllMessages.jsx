@@ -11,6 +11,7 @@ export default function AllMessages() {
   const handleSubmit = (event) => {
     event.preventDefault();
     DeleteMessages(setMessages, selectedMessageIds)
+    setSelectedMessageIds([])
   }
 
   const handleBoxClicked = (event) => {
