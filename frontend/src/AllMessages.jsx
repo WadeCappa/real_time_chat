@@ -43,7 +43,6 @@ export default function AllMessages() {
                       type="checkbox" 
                       id={message.PostId}
                       onChange={handleBoxClicked}
-                      checked={selectedMessageIds.includes(message.PostId)} 
                     />
                   </td>
                   <td>
