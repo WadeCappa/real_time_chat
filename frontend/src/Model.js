@@ -16,7 +16,7 @@ function getUrl() {
 
 export function GetMessages(setter) {
     const url = getUrl()
-    fetch(url + '/get')
+    fetch(url + '/')
     .then(response => {
         console.log(response)
         return response.json()
@@ -33,13 +33,23 @@ export function PostMessage(setter, newMessage) {
         method: "POST",
         body: JSON.stringify({"content": newMessage}),
     }
-    fetch(url + '/write', request)
-    .then(response => {
-        console.log(response)
-        return response.json()
-    })
+    fetch(url + '/', request)
     .then(_ => GetMessages(setter))
     .catch(error => {
         console.error('Error:', error);
     });
+}
+
+export function DeleteMessages(setter, messageIdsToDelete) {
+    const url = getUrl()
+    const request = {
+        method: "DELETE",
+        body: JSON.stringify({"postIds": messageIdsToDelete.map(m => Number(m))}),
+    }
+    fetch(url + '/', request)
+    .then(_ => GetMessages(setter))
+    .catch(error => {
+        console.error('Error:', error);
+    });
+
 }
