@@ -16,10 +16,10 @@ export default function AllMessages() {
 
   const handleBoxClicked = (event) => {
     const postId = event.target.id;
-    if (event.target.checked) {
-      setSelectedMessageIds([...selectedMessageIds, postId])
-    } else {
+    if (selectedMessageIds.includes(postId)) {
       setSelectedMessageIds(selectedMessageIds.filter(p => p !== postId))
+    } else {
+      setSelectedMessageIds([...selectedMessageIds, postId])
     }
     console.log(selectedMessageIds)
   }
@@ -39,7 +39,12 @@ export default function AllMessages() {
             return (
                 <tr>
                   <td>
-                    <input type="checkbox" id={message.PostId} name={message.PostId} onChange={handleBoxClicked}/>
+                    <input 
+                      type="checkbox" 
+                      id={message.PostId}
+                      onChange={handleBoxClicked}
+                      checked={selectedMessageIds.includes(message.PostId)} 
+                    />
                   </td>
                   <td>
                     <label for={message.PostId}>
