@@ -1,12 +1,23 @@
-import { useEffect, useState } from "react"
-import { GetMessages, DeleteMessages } from "./Model";
+import { useRef, useEffect, useState } from "react"
+import { GetMessages, DeleteMessages, WatchForNewMessages } from "./Model";
 import MessageForm from "./MessageForm";
 
 export default function AllMessages() {
   const [messages, setMessages] = useState([])
   const [selectedMessageIds, setSelectedMessageIds] = useState([])
+  const messagesRef = useRef(messages)
 
-  useEffect(() => GetMessages(setMessages), [])
+  useEffect(() => {
+    GetMessages((m) => {
+      messagesRef.current = m
+      setMessages(m)
+    });
+    WatchForNewMessages((m) => {
+      messagesRef.current = [m, ...messagesRef.current]
+      console.log("received event")
+      setMessages(messagesRef.current)
+    })
+  }, [])
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -26,7 +37,7 @@ export default function AllMessages() {
 
   return (
     <div>
-      <MessageForm setter={setMessages}  />
+      <MessageForm />
       <form onSubmit={handleSubmit} id="choosePostForm">
         <button type="submit" form="choosePostForm" value="Submit">Delete selected</button>
         <table >

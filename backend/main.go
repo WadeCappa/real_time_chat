@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -88,11 +89,11 @@ func deletePost(conn *sql.DB, deleteRequest messageDeleteRequest) error {
 	return nil
 }
 
-func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Time) error {
+func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Time) ([]message, error) {
 	post_id_conn, sequence_err := conn.Query("select nextval('post_id_sequence')")
 	if sequence_err != nil {
 		fmt.Println(sequence_err)
-		return sequence_err
+		return nil, sequence_err
 	}
 	var post_id int64
 	for post_id_conn.Next() {
@@ -106,10 +107,14 @@ func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Tim
 	_, err := conn.Query("insert into user_post (time_posted, content, post_id) values ($1, $2, $3)", timePosted.UnixMilli(), messagePost.Content, post_id)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return []message{{
+		Content:    messagePost.Content,
+		TimePosted: timePosted,
+		PostId:     post_id,
+	}}, nil
 }
 
 func main() {
@@ -118,8 +123,11 @@ func main() {
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
+	// What I am doing with this type is 100% not thread safe. But for the
+	// sake of getting SSE to work this is fine for now
+	var messageChannels []chan message
+
 	mode := os.Getenv("MODE")
-	fmt.Println(mode)
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST", "DELETE"}
 	config.AllowOriginFunc = func(origin string) bool {
@@ -167,14 +175,21 @@ func main() {
 		}
 
 		timePosted := time.Now()
-		fmt.Println(messagePost.Content)
+		fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
 
 		runWithDb(func(conn *sql.DB) {
-			err := writePost(conn, messagePost, timePosted)
+			message, err := writePost(conn, messagePost, timePosted)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, "Failed to write post")
 				return
 			}
+			go func() {
+				for _, m := range message {
+					for _, c := range messageChannels {
+						c <- m
+					}
+				}
+			}()
 		})
 
 		c.Status(http.StatusOK)
@@ -190,6 +205,31 @@ func main() {
 			}
 			c.JSON(http.StatusOK, res)
 		})
+	})
+
+	r.GET("/watch-messages", func(c *gin.Context) {
+		socketChannel := make(chan message)
+		messageChannels = append(messageChannels, socketChannel)
+		// need to remove from list when socket is closed
+
+		c.Writer.Header().Set("Content-Type", "text/event-stream")
+		c.Writer.Header().Set("Cache-Control", "no-cache")
+		c.Writer.Flush()
+		fmt.Println("connected with client")
+		var id = 0
+		for {
+			newMessage := <-socketChannel
+			data, err := json.Marshal(newMessage)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", data)))
+			c.Writer.Write([]byte("\n"))
+			c.Writer.Flush()
+			fmt.Printf("wrote message of id %d to sockets\n", id)
+			id++
+		}
 	})
 
 	r.Run()

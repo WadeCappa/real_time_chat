@@ -14,40 +14,49 @@ function getUrl() {
     }
 }
 
-export function GetMessages(setter) {
+export function WatchForNewMessages(singleMessageSetter) {
+    const eventSource = new EventSource(getUrl() + "/watch-messages")
+    eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        singleMessageSetter(data)
+    }
+    return () => eventSource.close();
+}
+
+export function GetMessages(allDataSetter) {
     const url = getUrl()
     fetch(url + '/')
     .then(response => {
         console.log(response)
         return response.json()
     })
-    .then(data => setter(data))
+    .then(data => allDataSetter(data))
     .catch(error => {
         console.error('Error:', error);
     });
 }
 
-export function PostMessage(setter, newMessage) {
+export function PostMessage(newMessage, messageSetter) {
     const url = getUrl()
     const request = {
         method: "POST",
-        body: JSON.stringify({"content": newMessage}),
+        body: JSON.stringify({"Content": newMessage}),
     }
     fetch(url + '/', request)
-    .then(_ => GetMessages(setter))
+    .then(_ => messageSetter(""))
     .catch(error => {
         console.error('Error:', error);
     });
 }
 
-export function DeleteMessages(setter, messageIdsToDelete) {
+export function DeleteMessages(messageIdsToDelete) {
     const url = getUrl()
     const request = {
         method: "DELETE",
         body: JSON.stringify({"postIds": messageIdsToDelete.map(m => Number(m))}),
     }
     fetch(url + '/', request)
-    .then(_ => GetMessages(setter))
+    .then(_ => {})
     .catch(error => {
         console.error('Error:', error);
     });

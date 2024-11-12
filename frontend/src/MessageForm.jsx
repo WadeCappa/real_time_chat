@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { PostMessage } from "./Model";
 
-export default function MessageForm({setter}) {
+export default function MessageForm() {
     const [message, setMessage] = useState("");
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        PostMessage(setter, message)
-        setMessage("")
+        PostMessage(message, setMessage)
     }
 
     return (
