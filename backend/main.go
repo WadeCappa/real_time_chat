@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -42,6 +43,67 @@ type DeleteMessageEvent struct {
 
 type Event struct {
 	Payload []byte
+}
+
+type SocketData struct {
+	inUse    bool
+	uniqueId uint64
+	channel  chan Event
+}
+
+type EventSockets struct {
+	sockets []SocketData
+	lastId  uint64
+	lock    sync.Mutex
+}
+
+func (sockets *EventSockets) AddChannel(newChannel chan Event) uint64 {
+	sockets.lock.Lock()
+	defer sockets.lock.Unlock()
+	sockets.lastId++
+	defer fmt.Printf("created channel of id %d\n", sockets.lastId)
+	for i := range sockets.sockets {
+		c := &sockets.sockets[i]
+		if !c.inUse {
+			c.channel = newChannel
+			c.inUse = true
+			c.uniqueId = sockets.lastId
+			return sockets.lastId
+		}
+	}
+
+	// Only if we can't re-use a spot in our slice, do we append a new channel
+	sockets.sockets = append(sockets.sockets, SocketData{
+		channel:  newChannel,
+		uniqueId: sockets.lastId,
+		inUse:    true,
+	})
+	return sockets.lastId
+}
+
+func (sockets *EventSockets) IterateThroughChannels(consumer func(chan Event)) {
+	sockets.lock.Lock()
+	defer sockets.lock.Unlock()
+	for i := range sockets.sockets {
+		c := &sockets.sockets[i]
+		if c.inUse {
+			fmt.Printf("talking to socket %d\n", c.uniqueId)
+			consumer(c.channel)
+		}
+	}
+}
+
+func (sockets *EventSockets) RemoveChannel(id uint64) {
+	sockets.lock.Lock()
+	defer sockets.lock.Unlock()
+	for i := range sockets.sockets {
+		c := &sockets.sockets[i]
+		if c.uniqueId == id {
+			c.channel = nil
+			c.inUse = false
+		}
+	}
+	fmt.Printf("removed socket %d\n", id)
 }
 
 func runWithDb(consumer func(*sql.DB)) {
@@ -137,9 +199,10 @@ func main() {
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
-	// What I am doing with this type is 100% not thread safe. But for the
-	// sake of getting SSE to work this is fine for now
-	var messageChannels []chan Event
+	// Lots of coordination overhead with this, also this won't scale
+	// past one instance. Better to use pub/sub
+	var eventSockets EventSockets
+	eventSockets.lastId = 0
 
 	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
@@ -185,10 +248,9 @@ func main() {
 					fmt.Println(err.Error())
 					return
 				}
-				for _, c := range messageChannels {
+				eventSockets.IterateThroughChannels(func(c chan Event) {
 					c <- Event{Payload: data}
-				}
-
+				})
 			}
 		}()
 
@@ -220,9 +282,9 @@ func main() {
 						fmt.Println(err.Error())
 						return
 					}
-					for _, c := range messageChannels {
+					eventSockets.IterateThroughChannels(func(c chan Event) {
 						c <- Event{Payload: data}
-					}
+					})
 				}
 			}()
 		})
@@ -244,21 +306,25 @@ func main() {
 
 	r.GET("/watch", func(c *gin.Context) {
 		socketChannel := make(chan Event)
-		messageChannels = append(messageChannels, socketChannel)
-		// need to remove from list when socket is closed
+		newId := eventSockets.AddChannel(socketChannel)
+		defer eventSockets.RemoveChannel(newId)
 
 		c.Writer.Header().Set("Content-Type", "text/event-stream")
 		c.Writer.Header().Set("Cache-Control", "no-cache")
 		c.Writer.Flush()
 		fmt.Println("connected with client")
-		var id = 0
 		for {
 			newEvent := <-socketChannel
+			select {
+			case <-c.Request.Context().Done():
+				// exit when done
+				return
+			default:
+				// no-op, keep going
+			}
 			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Payload)))
 			c.Writer.Write([]byte("\n"))
 			c.Writer.Flush()
-			fmt.Printf("wrote message of id %d to sockets\n", id)
-			id++
 		}
 	})
 
