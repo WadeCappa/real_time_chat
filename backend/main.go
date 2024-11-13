@@ -31,16 +31,6 @@ type Message struct {
 	PostId     int64
 }
 
-type NewMessageEvent struct {
-	Message Message
-	Name    string
-}
-
-type DeleteMessageEvent struct {
-	PostId int64
-	Name   string
-}
-
 type Event struct {
 	Payload []byte
 }
