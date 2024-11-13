@@ -42,14 +42,14 @@ type SocketData struct {
 }
 
 type EventSockets struct {
-	sockets []SocketData
-	lastId  uint64
-	lock    sync.Mutex
+	sockets    []SocketData
+	lastId     uint64
+	globalLock sync.Mutex
 }
 
 func (sockets *EventSockets) AddChannel(newChannel chan Event) uint64 {
-	sockets.lock.Lock()
-	defer sockets.lock.Unlock()
+	sockets.globalLock.Lock()
+	defer sockets.globalLock.Unlock()
 	sockets.lastId++
 	defer fmt.Printf("created channel of id %d\n", sockets.lastId)
 	for i := range sockets.sockets {
@@ -72,8 +72,8 @@ func (sockets *EventSockets) AddChannel(newChannel chan Event) uint64 {
 }
 
 func (sockets *EventSockets) IterateThroughChannels(consumer func(chan Event)) {
-	sockets.lock.Lock()
-	defer sockets.lock.Unlock()
+	sockets.globalLock.Lock()
+	defer sockets.globalLock.Unlock()
 	for i := range sockets.sockets {
 		c := &sockets.sockets[i]
 		if c.inUse {
@@ -84,16 +84,19 @@ func (sockets *EventSockets) IterateThroughChannels(consumer func(chan Event)) {
 }
 
 func (sockets *EventSockets) RemoveChannel(id uint64) {
-	sockets.lock.Lock()
-	defer sockets.lock.Unlock()
+	sockets.globalLock.Lock()
+	defer sockets.globalLock.Unlock()
 	for i := range sockets.sockets {
 		c := &sockets.sockets[i]
 		if c.uniqueId == id {
+			close(c.channel)
 			c.channel = nil
 			c.inUse = false
+			fmt.Printf("removed socket %d\n", id)
+			return
 		}
 	}
-	fmt.Printf("removed socket %d\n", id)
+	fmt.Printf("Could not find socket %d\n", id)
 }
 
 func runWithDb(consumer func(*sql.DB)) {
