@@ -13,15 +13,21 @@ export default function AllMessages() {
       setMessages(m)
     });
     WatchForNewMessages((m) => {
+      console.log(m)
+      console.log(messagesRef.current)
       messagesRef.current = [m, ...messagesRef.current]
-      console.log("received event")
+      setMessages(messagesRef.current)
+    }, (e) => {
+      console.log(e)
+      console.log(messagesRef.current)
+      messagesRef.current = messagesRef.current.filter(m => m.PostId !== e.PostId)
       setMessages(messagesRef.current)
     })
   }, [])
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    DeleteMessages(setMessages, selectedMessageIds)
+    DeleteMessages(selectedMessageIds)
     setSelectedMessageIds([])
   }
 

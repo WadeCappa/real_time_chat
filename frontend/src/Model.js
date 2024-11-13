@@ -14,11 +14,22 @@ function getUrl() {
     }
 }
 
-export function WatchForNewMessages(singleMessageSetter) {
-    const eventSource = new EventSource(getUrl() + "/watch-messages")
+export function WatchForNewMessages(singleMessageSetter, messageDeleter) {
+    const eventSource = new EventSource(getUrl() + "/watch")
     eventSource.onmessage = (event) => {
+        console.log(event)
         const data = JSON.parse(event.data)
-        singleMessageSetter(data)
+        console.log(data)
+        switch (data.Name) {
+            case "newMessage":
+                singleMessageSetter(data.Payload)
+                break
+            case "deleteMessage":
+                messageDeleter(data.Payload)
+                break
+            default:
+                console.log("unrecognized event")
+        }
     }
     return () => eventSource.close();
 }
@@ -50,6 +61,7 @@ export function PostMessage(newMessage, messageSetter) {
 }
 
 export function DeleteMessages(messageIdsToDelete) {
+    console.log(messageIdsToDelete)
     const url = getUrl()
     const request = {
         method: "DELETE",

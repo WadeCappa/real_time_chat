@@ -24,10 +24,24 @@ type messageDeleteRequest struct {
 	PostIds []int64 `form:"postIds" json:"postIds" xml:"postIds" binding:"required"`
 }
 
-type message struct {
+type Message struct {
 	Content    string
 	TimePosted time.Time
 	PostId     int64
+}
+
+type NewMessageEvent struct {
+	Message Message
+	Name    string
+}
+
+type DeleteMessageEvent struct {
+	PostId int64
+	Name   string
+}
+
+type Event struct {
+	Payload []byte
 }
 
 func runWithDb(consumer func(*sql.DB)) {
@@ -46,14 +60,14 @@ func runWithDb(consumer func(*sql.DB)) {
 	consumer(db)
 }
 
-func asMessages(messages *sql.Rows) []message {
-	var res []message
+func asMessages(messages *sql.Rows) []Message {
+	var res []Message
 	for messages.Next() {
 		var content string
 		var timePosted int64
 		var postId int64
 		if err := messages.Scan(&content, &timePosted, &postId); err == nil {
-			res = append(res, message{
+			res = append(res, Message{
 				Content:    content,
 				TimePosted: time.Unix(0, timePosted*int64(time.Millisecond)),
 				PostId:     postId,
@@ -68,7 +82,7 @@ func asMessages(messages *sql.Rows) []message {
 	return res
 }
 
-func getMessages(conn *sql.DB) ([]message, error) {
+func getMessages(conn *sql.DB) ([]Message, error) {
 	res, err := conn.Query("select content, time_posted, post_id from user_post")
 	if err != nil {
 		fmt.Println(err)
@@ -89,7 +103,7 @@ func deletePost(conn *sql.DB, deleteRequest messageDeleteRequest) error {
 	return nil
 }
 
-func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Time) ([]message, error) {
+func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Time) ([]Message, error) {
 	post_id_conn, sequence_err := conn.Query("select nextval('post_id_sequence')")
 	if sequence_err != nil {
 		fmt.Println(sequence_err)
@@ -110,7 +124,7 @@ func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Tim
 		return nil, err
 	}
 
-	return []message{{
+	return []Message{{
 		Content:    messagePost.Content,
 		TimePosted: timePosted,
 		PostId:     post_id,
@@ -125,7 +139,7 @@ func main() {
 
 	// What I am doing with this type is 100% not thread safe. But for the
 	// sake of getting SSE to work this is fine for now
-	var messageChannels []chan message
+	var messageChannels []chan Event
 
 	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
@@ -163,6 +177,21 @@ func main() {
 			}
 		})
 
+		go func() {
+			for _, p := range deleteRequest.PostIds {
+				payload := gin.H{"Payload": gin.H{"PostId": p}, "Name": "deleteMessage"}
+				data, err := json.Marshal(payload)
+				if err != nil {
+					fmt.Println(err.Error())
+					return
+				}
+				for _, c := range messageChannels {
+					c <- Event{Payload: data}
+				}
+
+			}
+		}()
+
 		c.Status(http.StatusOK)
 	})
 
@@ -178,15 +207,21 @@ func main() {
 		fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
 
 		runWithDb(func(conn *sql.DB) {
-			message, err := writePost(conn, messagePost, timePosted)
+			messages, err := writePost(conn, messagePost, timePosted)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, "Failed to write post")
 				return
 			}
 			go func() {
-				for _, m := range message {
+				for _, m := range messages {
+					payload := gin.H{"Payload": m, "Name": "newMessage"}
+					data, err := json.Marshal(payload)
+					if err != nil {
+						fmt.Println(err.Error())
+						return
+					}
 					for _, c := range messageChannels {
-						c <- m
+						c <- Event{Payload: data}
 					}
 				}
 			}()
@@ -207,8 +242,8 @@ func main() {
 		})
 	})
 
-	r.GET("/watch-messages", func(c *gin.Context) {
-		socketChannel := make(chan message)
+	r.GET("/watch", func(c *gin.Context) {
+		socketChannel := make(chan Event)
 		messageChannels = append(messageChannels, socketChannel)
 		// need to remove from list when socket is closed
 
@@ -218,13 +253,8 @@ func main() {
 		fmt.Println("connected with client")
 		var id = 0
 		for {
-			newMessage := <-socketChannel
-			data, err := json.Marshal(newMessage)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				return
-			}
-			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", data)))
+			newEvent := <-socketChannel
+			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Payload)))
 			c.Writer.Write([]byte("\n"))
 			c.Writer.Flush()
 			fmt.Printf("wrote message of id %d to sockets\n", id)
