@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -35,71 +34,6 @@ type Message struct {
 type Event struct {
 	Name    string
 	Payload []byte
-}
-
-type SocketData struct {
-	inUse    bool
-	uniqueId uint64
-	channel  chan []byte
-}
-
-type EventSockets struct {
-	sockets    []SocketData
-	lastId     uint64
-	globalLock sync.Mutex
-}
-
-func (sockets *EventSockets) FanInMessage(event []byte) {
-	eventCopy := event
-	sockets.globalLock.Lock()
-	defer sockets.globalLock.Unlock()
-	for i := range sockets.sockets {
-		c := &sockets.sockets[i]
-		if c.inUse {
-			fmt.Printf("talking to socket %d\n", c.uniqueId)
-			c.channel <- eventCopy
-		}
-	}
-}
-
-func (sockets *EventSockets) AddChannel(newChannel chan []byte) uint64 {
-	sockets.globalLock.Lock()
-	defer sockets.globalLock.Unlock()
-	sockets.lastId++
-	defer fmt.Printf("created channel of id %d\n", sockets.lastId)
-	for i := range sockets.sockets {
-		c := &sockets.sockets[i]
-		if !c.inUse {
-			c.channel = newChannel
-			c.inUse = true
-			c.uniqueId = sockets.lastId
-			return sockets.lastId
-		}
-	}
-
-	// Only if we can't re-use a spot in our slice, do we append a new channel
-	sockets.sockets = append(sockets.sockets, SocketData{
-		channel:  newChannel,
-		uniqueId: sockets.lastId,
-		inUse:    true,
-	})
-	return sockets.lastId
-}
-
-func (sockets *EventSockets) RemoveChannel(id uint64) {
-	sockets.globalLock.Lock()
-	defer sockets.globalLock.Unlock()
-	for i := range sockets.sockets {
-		c := &sockets.sockets[i]
-		if c.uniqueId == id {
-			close(c.channel)
-			c.channel = nil
-			c.inUse = false
-			fmt.Printf("removed socket %d\n", id)
-			return
-		}
-	}
-	fmt.Printf("Could not find socket %d\n", id)
 }
 
 func runWithDb(consumer func(*sql.DB)) {
@@ -189,16 +123,51 @@ func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Tim
 	}}, nil
 }
 
+func listenWithConsumer(ch *amqp.Channel, consumer func(amqp.Delivery)) {
+	queue, err := ch.QueueDeclare(
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	bindError := ch.QueueBind(queue.Name, "", "events", false, nil)
+	if bindError != nil {
+		fmt.Println(bindError.Error())
+		return
+	}
+
+	msgs, err := ch.Consume(
+		queue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	for {
+		event := <-msgs
+		consumer(event)
+	}
+}
+
 func main() {
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
-
-	// Lots of coordination overhead with this, also this won't scale
-	// past one instance. Better to use pub/sub
-	var eventSockets EventSockets
-	eventSockets.lastId = 0
 
 	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
@@ -245,46 +214,6 @@ func main() {
 		return
 	}
 
-	queue, err := ch.QueueDeclare(
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	bindError := ch.QueueBind(queue.Name, "", "events", false, nil)
-	if bindError != nil {
-		fmt.Println(bindError.Error())
-		return
-	}
-
-	msgs, err := ch.Consume(
-		queue.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	go func() {
-		for {
-			rabbitEvent := <-msgs
-			eventSockets.FanInMessage(rabbitEvent.Body)
-		}
-	}()
-
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -319,7 +248,7 @@ func main() {
 				}
 				err = ch.Publish(
 					"events",
-					queue.Name,
+					"",
 					false,
 					false,
 					amqp.Publishing{
@@ -363,7 +292,7 @@ func main() {
 					}
 					err = ch.Publish(
 						"events",
-						queue.Name,
+						"",
 						false,
 						false,
 						amqp.Publishing{
@@ -394,16 +323,13 @@ func main() {
 	})
 
 	r.GET("/watch", func(c *gin.Context) {
-		socketChannel := make(chan []byte)
-		newId := eventSockets.AddChannel(socketChannel)
-		defer eventSockets.RemoveChannel(newId)
 
 		c.Writer.Header().Set("Content-Type", "text/event-stream")
 		c.Writer.Header().Set("Cache-Control", "no-cache")
 		c.Writer.Flush()
 		fmt.Println("connected with client")
-		for {
-			newEvent := <-socketChannel
+
+		listenWithConsumer(ch, func(newEvent amqp.Delivery) {
 			select {
 			case <-c.Request.Context().Done():
 				// exit when done
@@ -411,10 +337,10 @@ func main() {
 			default:
 				// no-op, keep going
 			}
-			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
+			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Body)))
 			c.Writer.Write([]byte("\n"))
 			c.Writer.Flush()
-		}
+		})
 	})
 
 	r.Run()
