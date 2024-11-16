@@ -20,7 +20,7 @@ export default function AllMessages() {
     }, (e) => {
       console.log(e)
       console.log(messagesRef.current)
-      messagesRef.current = messagesRef.current.filter(m => m.PostId !== e.PostId)
+      messagesRef.current = messagesRef.current.filter(m => m.PostId !== e)
       setMessages(messagesRef.current)
     })
   }, [])

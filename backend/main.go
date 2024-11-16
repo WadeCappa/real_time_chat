@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	xss "github.com/sahilchopra/gin-gonic-xss-middleware"
 )
 
@@ -32,13 +33,14 @@ type Message struct {
 }
 
 type Event struct {
+	Name    string
 	Payload []byte
 }
 
 type SocketData struct {
 	inUse    bool
 	uniqueId uint64
-	channel  chan Event
+	channel  chan []byte
 }
 
 type EventSockets struct {
@@ -47,7 +49,20 @@ type EventSockets struct {
 	globalLock sync.Mutex
 }
 
-func (sockets *EventSockets) AddChannel(newChannel chan Event) uint64 {
+func (sockets *EventSockets) FanInMessage(event []byte) {
+	eventCopy := event
+	sockets.globalLock.Lock()
+	defer sockets.globalLock.Unlock()
+	for i := range sockets.sockets {
+		c := &sockets.sockets[i]
+		if c.inUse {
+			fmt.Printf("talking to socket %d\n", c.uniqueId)
+			c.channel <- eventCopy
+		}
+	}
+}
+
+func (sockets *EventSockets) AddChannel(newChannel chan []byte) uint64 {
 	sockets.globalLock.Lock()
 	defer sockets.globalLock.Unlock()
 	sockets.lastId++
@@ -69,18 +84,6 @@ func (sockets *EventSockets) AddChannel(newChannel chan Event) uint64 {
 		inUse:    true,
 	})
 	return sockets.lastId
-}
-
-func (sockets *EventSockets) IterateThroughChannels(consumer func(chan Event)) {
-	sockets.globalLock.Lock()
-	defer sockets.globalLock.Unlock()
-	for i := range sockets.sockets {
-		c := &sockets.sockets[i]
-		if c.inUse {
-			fmt.Printf("talking to socket %d\n", c.uniqueId)
-			consumer(c.channel)
-		}
-	}
 }
 
 func (sockets *EventSockets) RemoveChannel(id uint64) {
@@ -214,6 +217,79 @@ func main() {
 	}
 	r.Use(cors.New(config))
 
+	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq/")
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	defer ch.Close()
+
+	exchangeError := ch.ExchangeDeclare(
+		"events",
+		"fanout",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if exchangeError != nil {
+		fmt.Println(exchangeError.Error())
+		return
+	}
+
+	queue, err := ch.QueueDeclare(
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	bindError := ch.QueueBind(queue.Name, "", "events", false, nil)
+	if bindError != nil {
+		fmt.Println(bindError.Error())
+		return
+	}
+
+	msgs, err := ch.Consume(
+		queue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	go func() {
+		for {
+			rabbitEvent := <-msgs
+			eventSockets.FanInMessage(rabbitEvent.Body)
+		}
+	}()
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	r.DELETE("/", func(c *gin.Context) {
 		fmt.Println("received delete request")
 		var deleteRequest messageDeleteRequest
@@ -222,8 +298,8 @@ func main() {
 			return
 		}
 
-		for _, p := range deleteRequest.PostIds {
-			fmt.Printf("deleting message %d\n", p)
+		for _, postId := range deleteRequest.PostIds {
+			fmt.Printf("deleting message %d\n", postId)
 		}
 
 		runWithDb(func(conn *sql.DB) {
@@ -233,17 +309,27 @@ func main() {
 			}
 		})
 
-		go func() {
+		func() {
 			for _, p := range deleteRequest.PostIds {
-				payload := gin.H{"Payload": gin.H{"PostId": p}, "Name": "deleteMessage"}
+				payload := gin.H{"Payload": p, "Name": "deleteMessage"}
 				data, err := json.Marshal(payload)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
 				}
-				eventSockets.IterateThroughChannels(func(c chan Event) {
-					c <- Event{Payload: data}
-				})
+				err = ch.Publish(
+					"events",
+					queue.Name,
+					false,
+					false,
+					amqp.Publishing{
+						ContentType: "text/plain",
+						Body:        data,
+					})
+				if err != nil {
+					fmt.Println(err.Error())
+					return
+				}
 			}
 		}()
 
@@ -267,7 +353,7 @@ func main() {
 				c.JSON(http.StatusInternalServerError, "Failed to write post")
 				return
 			}
-			go func() {
+			func() {
 				for _, m := range messages {
 					payload := gin.H{"Payload": m, "Name": "newMessage"}
 					data, err := json.Marshal(payload)
@@ -275,9 +361,19 @@ func main() {
 						fmt.Println(err.Error())
 						return
 					}
-					eventSockets.IterateThroughChannels(func(c chan Event) {
-						c <- Event{Payload: data}
-					})
+					err = ch.Publish(
+						"events",
+						queue.Name,
+						false,
+						false,
+						amqp.Publishing{
+							ContentType: "text/plain",
+							Body:        data,
+						})
+					if err != nil {
+						fmt.Println(err.Error())
+						return
+					}
 				}
 			}()
 		})
@@ -298,7 +394,7 @@ func main() {
 	})
 
 	r.GET("/watch", func(c *gin.Context) {
-		socketChannel := make(chan Event)
+		socketChannel := make(chan []byte)
 		newId := eventSockets.AddChannel(socketChannel)
 		defer eventSockets.RemoveChannel(newId)
 
@@ -315,7 +411,7 @@ func main() {
 			default:
 				// no-op, keep going
 			}
-			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Payload)))
+			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
 			c.Writer.Write([]byte("\n"))
 			c.Writer.Flush()
 		}
