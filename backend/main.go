@@ -74,8 +74,8 @@ func asMessages(messages *sql.Rows) []Message {
 	return res
 }
 
-func getMessages(conn *sql.DB) ([]Message, error) {
-	res, err := conn.Query("select content, time_posted, post_id from user_post")
+func getMessages(postgres *sql.DB) ([]Message, error) {
+	res, err := postgres.Query("select content, time_posted, post_id from user_post")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -85,8 +85,8 @@ func getMessages(conn *sql.DB) ([]Message, error) {
 	return asMessages(res), nil
 }
 
-func deletePost(conn *sql.DB, deleteRequest messageDeleteRequest) error {
-	_, err := conn.Query("delete from user_post where user_post.post_id = any($1)", pq.Array(deleteRequest.PostIds))
+func deletePost(postgres *sql.DB, deleteRequest messageDeleteRequest) error {
+	_, err := postgres.Query("delete from user_post where user_post.post_id = any($1)", pq.Array(deleteRequest.PostIds))
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -95,8 +95,8 @@ func deletePost(conn *sql.DB, deleteRequest messageDeleteRequest) error {
 	return nil
 }
 
-func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Time) ([]Message, error) {
-	post_id_conn, sequence_err := conn.Query("select nextval('post_id_sequence')")
+func writePost(postgres *sql.DB, messagePost messagePostRequest, timePosted time.Time) ([]Message, error) {
+	post_id_conn, sequence_err := postgres.Query("select nextval('post_id_sequence')")
 	if sequence_err != nil {
 		fmt.Println(sequence_err)
 		return nil, sequence_err
@@ -110,7 +110,7 @@ func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Tim
 
 	fmt.Printf("got new id from database: %d\n", post_id)
 
-	_, err := conn.Query("insert into user_post (time_posted, content, post_id) values ($1, $2, $3)", timePosted.UnixMilli(), messagePost.Content, post_id)
+	_, err := postgres.Query("insert into user_post (time_posted, content, post_id) values ($1, $2, $3)", timePosted.UnixMilli(), messagePost.Content, post_id)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -123,35 +123,18 @@ func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Tim
 	}}, nil
 }
 
-func getChannel() (*amqp.Channel, error) {
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq/")
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
-
-	return ch, nil
-}
-
-func listenWithConsumer(consumer func(amqp.Delivery)) {
-	ch, err := getChannel()
+func consumeRabbitEvents(rabbit *amqp.Connection, consumer func(amqp.Delivery) bool) {
+	readChannel, err := rabbit.Channel()
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	defer ch.Close()
+	defer readChannel.Close()
 
-	queue, err := ch.QueueDeclare(
+	queue, err := readChannel.QueueDeclare(
 		"",
 		false,
-		false,
+		true,
 		false,
 		false,
 		nil,
@@ -160,14 +143,15 @@ func listenWithConsumer(consumer func(amqp.Delivery)) {
 		fmt.Println(err.Error())
 		return
 	}
+	defer readChannel.QueueDelete(queue.Name, false, false, false)
 
-	bindError := ch.QueueBind(queue.Name, "", "events", false, nil)
+	bindError := readChannel.QueueBind(queue.Name, "", "events", false, nil)
 	if bindError != nil {
 		fmt.Println(bindError.Error())
 		return
 	}
 
-	msgs, err := ch.Consume(
+	msgs, err := readChannel.Consume(
 		queue.Name,
 		"",
 		true,
@@ -183,7 +167,10 @@ func listenWithConsumer(consumer func(amqp.Delivery)) {
 
 	for {
 		event := <-msgs
-		consumer(event)
+		done := consumer(event)
+		if done {
+			return
+		}
 	}
 }
 
@@ -210,14 +197,21 @@ func main() {
 	}
 	r.Use(cors.New(config))
 
-	ch, err := getChannel()
+	rabbit, err := amqp.Dial("amqp://guest:guest@rabbitmq/")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	defer ch.Close()
+	defer rabbit.Close()
 
-	exchangeError := ch.ExchangeDeclare(
+	writeChannel, err := rabbit.Channel()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	defer writeChannel.Close()
+
+	exchangeError := writeChannel.ExchangeDeclare(
 		"events",
 		"fanout",
 		false,
@@ -248,8 +242,8 @@ func main() {
 			fmt.Printf("deleting message %d\n", postId)
 		}
 
-		runWithDb(func(conn *sql.DB) {
-			if err := deletePost(conn, deleteRequest); err != nil {
+		runWithDb(func(postgres *sql.DB) {
+			if err := deletePost(postgres, deleteRequest); err != nil {
 				c.JSON(http.StatusBadRequest, "Failed to delete post")
 				return
 			}
@@ -263,7 +257,7 @@ func main() {
 					fmt.Println(err.Error())
 					return
 				}
-				err = ch.Publish(
+				err = writeChannel.Publish(
 					"events",
 					"",
 					false,
@@ -293,8 +287,8 @@ func main() {
 		timePosted := time.Now()
 		fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
 
-		runWithDb(func(conn *sql.DB) {
-			messages, err := writePost(conn, messagePost, timePosted)
+		runWithDb(func(postgres *sql.DB) {
+			messages, err := writePost(postgres, messagePost, timePosted)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, "Failed to write post")
 				return
@@ -307,7 +301,7 @@ func main() {
 						fmt.Println(err.Error())
 						return
 					}
-					err = ch.Publish(
+					err = writeChannel.Publish(
 						"events",
 						"",
 						false,
@@ -329,8 +323,8 @@ func main() {
 
 	r.GET("/", func(c *gin.Context) {
 		fmt.Println("received get request")
-		runWithDb(func(conn *sql.DB) {
-			res, err := getMessages(conn)
+		runWithDb(func(postgres *sql.DB) {
+			res, err := getMessages(postgres)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, "Failed to get posts")
 				return
@@ -340,23 +334,24 @@ func main() {
 	})
 
 	r.GET("/watch", func(c *gin.Context) {
-
 		c.Writer.Header().Set("Content-Type", "text/event-stream")
 		c.Writer.Header().Set("Cache-Control", "no-cache")
 		c.Writer.Flush()
 		fmt.Println("connected with client")
 
-		listenWithConsumer(func(newEvent amqp.Delivery) {
+		consumeRabbitEvents(rabbit, func(newEvent amqp.Delivery) bool {
 			select {
 			case <-c.Request.Context().Done():
 				// exit when done
-				return
+				return true
 			default:
 				// no-op, keep going
 			}
 			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Body)))
 			c.Writer.Write([]byte("\n"))
 			c.Writer.Flush()
+
+			return false
 		})
 	})
 
