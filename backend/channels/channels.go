@@ -19,7 +19,7 @@ type EventSockets struct {
 }
 
 func New() *EventSockets {
-	defaultSize := 1000
+	defaultSize := 10
 	sockets := EventSockets{
 		sockets:       make([]*SocketData, 0),
 		channelsInUse: 0,
@@ -96,6 +96,7 @@ func (sockets *EventSockets) maybeDecreaseSizeUnsafe() {
 
 	newSlice := make([]*SocketData, len(sockets.sockets)/2)
 	count := 0
+	defer fmt.Printf("removed %d slots, %d slots remaining\n", count, len(sockets.sockets))
 	for _, c := range sockets.sockets {
 		if c.inUse {
 			// append starting at the end to make inserts faster when we have new connections,
