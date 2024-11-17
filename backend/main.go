@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sort"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
 	xss "github.com/sahilchopra/gin-gonic-xss-middleware"
@@ -31,146 +29,120 @@ type Message struct {
 	PostId     int64
 }
 
-type Event struct {
-	Name    string
-	Payload []byte
-}
-
-func runWithDb(consumer func(*sql.DB)) {
-	host := "db"
-	port := 5432
-	user := os.Getenv("POSTGRES_USER")
-	password := os.Getenv("POSTGRES_PASSWORD")
-	dbname := os.Getenv("POSTGRES_DB")
-
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer db.Close()
-	consumer(db)
-}
-
-func asMessages(messages *sql.Rows) []Message {
-	var res []Message
-	for messages.Next() {
-		var content string
-		var timePosted int64
-		var postId int64
-		if err := messages.Scan(&content, &timePosted, &postId); err == nil {
-			res = append(res, Message{
-				Content:    content,
-				TimePosted: time.Unix(0, timePosted*int64(time.Millisecond)),
-				PostId:     postId,
-			})
-		} else {
-			fmt.Println(err)
-		}
-	}
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].TimePosted.After(res[j].TimePosted)
-	})
-	return res
-}
-
-func getMessages(postgres *sql.DB) ([]Message, error) {
-	res, err := postgres.Query("select content, time_posted, post_id from user_post")
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	defer res.Close()
-
-	return asMessages(res), nil
-}
-
-func deletePost(postgres *sql.DB, deleteRequest messageDeleteRequest) error {
-	_, err := postgres.Query("delete from user_post where user_post.post_id = any($1)", pq.Array(deleteRequest.PostIds))
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-func writePost(postgres *sql.DB, messagePost messagePostRequest, timePosted time.Time) ([]Message, error) {
-	post_id_conn, sequence_err := postgres.Query("select nextval('post_id_sequence')")
-	if sequence_err != nil {
-		fmt.Println(sequence_err)
-		return nil, sequence_err
-	}
-	var post_id int64
-	for post_id_conn.Next() {
-		if err := post_id_conn.Scan(&post_id); err != nil {
-			fmt.Println(err)
-		}
-	}
-
-	fmt.Printf("got new id from database: %d\n", post_id)
-
-	_, err := postgres.Query("insert into user_post (time_posted, content, post_id) values ($1, $2, $3)", timePosted.UnixMilli(), messagePost.Content, post_id)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	return []Message{{
-		Content:    messagePost.Content,
-		TimePosted: timePosted,
-		PostId:     post_id,
-	}}, nil
-}
-
-func consumeRabbitEvents(rabbit *amqp.Connection, consumer func(amqp.Delivery) bool) {
-	readChannel, err := rabbit.Channel()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer readChannel.Close()
-
-	queue, err := readChannel.QueueDeclare(
-		"",
-		false,
-		true,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer readChannel.QueueDelete(queue.Name, false, false, false)
-
-	bindError := readChannel.QueueBind(queue.Name, "", "events", false, nil)
-	if bindError != nil {
-		fmt.Println(bindError.Error())
+func deleteMessage(c *gin.Context, writeChannel *amqp.Channel) {
+	fmt.Println("received delete request")
+	var deleteRequest messageDeleteRequest
+	if err := c.BindJSON(&deleteRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	msgs, err := readChannel.Consume(
-		queue.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+	for _, postId := range deleteRequest.PostIds {
+		fmt.Printf("deleting message %d\n", postId)
 	}
 
-	for {
-		event := <-msgs
-		done := consumer(event)
-		if done {
+	callWithDb(func(postgres *sql.DB) {
+		if err := deletePost(postgres, deleteRequest); err != nil {
+			c.JSON(http.StatusBadRequest, "Failed to delete post")
 			return
 		}
+	})
+
+	for _, p := range deleteRequest.PostIds {
+		payload := gin.H{"Payload": p, "Name": "deleteMessage"}
+		data, err := json.Marshal(payload)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		if err := writeToRabbit(writeChannel, data); err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func createMessage(c *gin.Context, writeChannel *amqp.Channel) {
+	fmt.Println("received write request")
+	var messagePost messagePostRequest
+	if err := c.BindJSON(&messagePost); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	timePosted := time.Now()
+	fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
+
+	res, err := runWithDb(func(postgres *sql.DB) (*Message, error) {
+		messages, err := writePost(postgres, messagePost, timePosted)
+		if err != nil {
+			return nil, err
+		}
+
+		return messages, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, "Failed to write post")
+		fmt.Println(err.Error())
+		return
+	}
+
+	payload := gin.H{"Payload": *res, "Name": "newMessage"}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	if err := writeToRabbit(writeChannel, data); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func loadMessages(c *gin.Context) {
+	fmt.Println("received get request")
+	res, err := runWithDb(func(postgres *sql.DB) (*[]Message, error) {
+		res, err := getMessages(postgres)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, "Failed to get posts")
+		fmt.Println(err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, *res)
+}
+
+func watchEvents(c *gin.Context, eventSockets *EventSockets) {
+	socketChannel := make(chan []byte)
+	newId := eventSockets.AddChannel(socketChannel)
+	defer eventSockets.RemoveChannel(newId)
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Flush()
+	fmt.Println("connected with client")
+
+	for {
+		newEvent := <-socketChannel
+		select {
+		case <-c.Request.Context().Done():
+			// exit when done
+			return
+		default:
+			// no-op, keep going
+		}
+		c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
+		c.Writer.Write([]byte("\n"))
+		c.Writer.Flush()
 	}
 }
 
@@ -179,6 +151,9 @@ func main() {
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
+
+	var eventSockets EventSockets
+	eventSockets.lastId = 0
 
 	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
@@ -225,134 +200,33 @@ func main() {
 		return
 	}
 
+	killChannel := make(chan bool)
+	listener, err := consumeRabbitEvents(rabbit, killChannel)
 	if err != nil {
+		killChannel <- true
 		fmt.Println(err.Error())
 		return
 	}
 
+	go func() {
+		for {
+			newEvent := <-listener
+			eventSockets.FanInMessage(newEvent.Body)
+		}
+	}()
+
 	r.DELETE("/", func(c *gin.Context) {
-		fmt.Println("received delete request")
-		var deleteRequest messageDeleteRequest
-		if err := c.BindJSON(&deleteRequest); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		for _, postId := range deleteRequest.PostIds {
-			fmt.Printf("deleting message %d\n", postId)
-		}
-
-		runWithDb(func(postgres *sql.DB) {
-			if err := deletePost(postgres, deleteRequest); err != nil {
-				c.JSON(http.StatusBadRequest, "Failed to delete post")
-				return
-			}
-		})
-
-		func() {
-			for _, p := range deleteRequest.PostIds {
-				payload := gin.H{"Payload": p, "Name": "deleteMessage"}
-				data, err := json.Marshal(payload)
-				if err != nil {
-					fmt.Println(err.Error())
-					return
-				}
-				err = writeChannel.Publish(
-					"events",
-					"",
-					false,
-					false,
-					amqp.Publishing{
-						ContentType: "text/plain",
-						Body:        data,
-					})
-				if err != nil {
-					fmt.Println(err.Error())
-					return
-				}
-			}
-		}()
-
-		c.Status(http.StatusOK)
+		deleteMessage(c, writeChannel)
 	})
 
 	r.POST("/", func(c *gin.Context) {
-		fmt.Println("received write request")
-		var messagePost messagePostRequest
-		if err := c.BindJSON(&messagePost); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		timePosted := time.Now()
-		fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
-
-		runWithDb(func(postgres *sql.DB) {
-			messages, err := writePost(postgres, messagePost, timePosted)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, "Failed to write post")
-				return
-			}
-			func() {
-				for _, m := range messages {
-					payload := gin.H{"Payload": m, "Name": "newMessage"}
-					data, err := json.Marshal(payload)
-					if err != nil {
-						fmt.Println(err.Error())
-						return
-					}
-					err = writeChannel.Publish(
-						"events",
-						"",
-						false,
-						false,
-						amqp.Publishing{
-							ContentType: "text/plain",
-							Body:        data,
-						})
-					if err != nil {
-						fmt.Println(err.Error())
-						return
-					}
-				}
-			}()
-		})
-
-		c.Status(http.StatusOK)
+		createMessage(c, writeChannel)
 	})
 
-	r.GET("/", func(c *gin.Context) {
-		fmt.Println("received get request")
-		runWithDb(func(postgres *sql.DB) {
-			res, err := getMessages(postgres)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, "Failed to get posts")
-				return
-			}
-			c.JSON(http.StatusOK, res)
-		})
-	})
+	r.GET("/", loadMessages)
 
 	r.GET("/watch", func(c *gin.Context) {
-		c.Writer.Header().Set("Content-Type", "text/event-stream")
-		c.Writer.Header().Set("Cache-Control", "no-cache")
-		c.Writer.Flush()
-		fmt.Println("connected with client")
-
-		consumeRabbitEvents(rabbit, func(newEvent amqp.Delivery) bool {
-			select {
-			case <-c.Request.Context().Done():
-				// exit when done
-				return true
-			default:
-				// no-op, keep going
-			}
-			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Body)))
-			c.Writer.Write([]byte("\n"))
-			c.Writer.Flush()
-
-			return false
-		})
+		watchEvents(c, &eventSockets)
 	})
 
 	r.Run()
