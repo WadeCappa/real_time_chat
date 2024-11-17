@@ -56,3 +56,15 @@ func consumeRabbitEvents(rabbit *amqp.Connection, killChannel chan bool) (<-chan
 	}
 	return msgs, nil
 }
+
+func writeToRabbit(writeChannel *amqp.Channel, data []byte) error {
+	return writeChannel.Publish(
+		"events",
+		"",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        data,
+		})
+}
