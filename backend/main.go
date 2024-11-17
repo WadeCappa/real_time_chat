@@ -123,62 +123,14 @@ func writePost(postgres *sql.DB, messagePost messagePostRequest, timePosted time
 	}}, nil
 }
 
-func consumeRabbitEvents(rabbit *amqp.Connection, consumer func(amqp.Delivery) bool) {
-	readChannel, err := rabbit.Channel()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer readChannel.Close()
-
-	queue, err := readChannel.QueueDeclare(
-		"",
-		false,
-		true,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer readChannel.QueueDelete(queue.Name, false, false, false)
-
-	bindError := readChannel.QueueBind(queue.Name, "", "events", false, nil)
-	if bindError != nil {
-		fmt.Println(bindError.Error())
-		return
-	}
-
-	msgs, err := readChannel.Consume(
-		queue.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	for {
-		event := <-msgs
-		done := consumer(event)
-		if done {
-			return
-		}
-	}
-}
-
 func main() {
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
+
+	var eventSockets EventSockets
+	eventSockets.lastId = 0
 
 	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
@@ -229,6 +181,20 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+	killChannel := make(chan bool)
+	listener, err := consumeRabbitEvents(rabbit, killChannel)
+	if err != nil {
+		killChannel <- true
+		fmt.Println(err.Error())
+		return
+	}
+
+	go func() {
+		for {
+			newEvent := <-listener
+			eventSockets.FanInMessage(newEvent.Body)
+		}
+	}()
 
 	r.DELETE("/", func(c *gin.Context) {
 		fmt.Println("received delete request")
@@ -334,25 +300,28 @@ func main() {
 	})
 
 	r.GET("/watch", func(c *gin.Context) {
+		socketChannel := make(chan []byte)
+		newId := eventSockets.AddChannel(socketChannel)
+		defer eventSockets.RemoveChannel(newId)
+
 		c.Writer.Header().Set("Content-Type", "text/event-stream")
 		c.Writer.Header().Set("Cache-Control", "no-cache")
 		c.Writer.Flush()
 		fmt.Println("connected with client")
 
-		consumeRabbitEvents(rabbit, func(newEvent amqp.Delivery) bool {
+		for {
+			newEvent := <-socketChannel
 			select {
 			case <-c.Request.Context().Done():
 				// exit when done
-				return true
+				return
 			default:
 				// no-op, keep going
 			}
-			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent.Body)))
+			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
 			c.Writer.Write([]byte("\n"))
 			c.Writer.Flush()
-
-			return false
-		})
+		}
 	})
 
 	r.Run()
