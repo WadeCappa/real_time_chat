@@ -123,7 +123,31 @@ func writePost(conn *sql.DB, messagePost messagePostRequest, timePosted time.Tim
 	}}, nil
 }
 
-func listenWithConsumer(ch *amqp.Channel, consumer func(amqp.Delivery)) {
+func getChannel() (*amqp.Channel, error) {
+	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq/")
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	return ch, nil
+}
+
+func listenWithConsumer(consumer func(amqp.Delivery)) {
+	ch, err := getChannel()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	defer ch.Close()
+
 	queue, err := ch.QueueDeclare(
 		"",
 		false,
@@ -186,14 +210,7 @@ func main() {
 	}
 	r.Use(cors.New(config))
 
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq/")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
+	ch, err := getChannel()
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -329,7 +346,7 @@ func main() {
 		c.Writer.Flush()
 		fmt.Println("connected with client")
 
-		listenWithConsumer(ch, func(newEvent amqp.Delivery) {
+		listenWithConsumer(func(newEvent amqp.Delivery) {
 			select {
 			case <-c.Request.Context().Done():
 				// exit when done
