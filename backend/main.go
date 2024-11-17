@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/channels"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -121,7 +122,7 @@ func loadMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, *res)
 }
 
-func watchEvents(c *gin.Context, eventSockets *EventSockets) {
+func watchEvents(c *gin.Context, eventSockets *channels.EventSockets) {
 	socketChannel := make(chan []byte)
 	newId := eventSockets.AddChannel(socketChannel)
 	defer eventSockets.RemoveChannel(newId)
@@ -152,8 +153,7 @@ func main() {
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
-	var eventSockets EventSockets
-	eventSockets.lastId = 0
+	eventSockets := channels.New()
 
 	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
@@ -226,7 +226,7 @@ func main() {
 	r.GET("/", loadMessages)
 
 	r.GET("/watch", func(c *gin.Context) {
-		watchEvents(c, &eventSockets)
+		watchEvents(c, eventSockets)
 	})
 
 	r.Run()
