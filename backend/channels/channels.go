@@ -10,16 +10,19 @@ type SocketData struct {
 	channel  chan []byte
 }
 type EventSockets struct {
-	sockets    []*SocketData
-	lastId     int
-	globalLock sync.Mutex
+	sockets      []*SocketData
+	lastId       int
+	globalLock   sync.Mutex
+	socketsInUse int
 }
 
+const defaultSize = 10
+
 func New() *EventSockets {
-	defaultSize := 10
 	sockets := EventSockets{
-		sockets: make([]*SocketData, defaultSize),
-		lastId:  0,
+		sockets:      make([]*SocketData, defaultSize),
+		lastId:       0,
+		socketsInUse: 0,
 	}
 
 	return &sockets
@@ -42,6 +45,7 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte) int {
 	sockets.globalLock.Lock()
 	defer sockets.globalLock.Unlock()
 	sockets.lastId++
+	sockets.socketsInUse++
 	defer fmt.Printf("created channel of id %d\n", sockets.lastId)
 	for i := range sockets.sockets {
 		c := sockets.sockets[i]
@@ -55,11 +59,15 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte) int {
 		}
 	}
 
-	// Only if we can't re-use a spot in our slice, do we append a new channel
-	sockets.sockets = append(sockets.sockets, &SocketData{
+	// Only if we can't re-use a spot in our slice, do we append new channelb
+	currentSize := len(sockets.sockets)
+	sockets.doubleSizeUnsafe()
+
+	// After doubling the size, this is going to be empty
+	sockets.sockets[currentSize] = &SocketData{
 		channel:  newChannel,
 		uniqueId: sockets.lastId,
-	})
+	}
 	return sockets.lastId
 }
 
@@ -72,8 +80,40 @@ func (sockets *EventSockets) RemoveChannel(id int) {
 			close(c.channel)
 			sockets.sockets[i] = nil
 			fmt.Printf("removed socket %d\n", id)
-			return
+			sockets.socketsInUse--
+			break
 		}
 	}
-	fmt.Printf("Could not find socket %d\n", id)
+
+	if sockets.socketsInUse < (len(sockets.sockets)/4) && (len(sockets.sockets)/2) >= defaultSize {
+		sockets.halfSizeUnsafe()
+	}
+}
+
+func (sockets *EventSockets) doubleSizeUnsafe() {
+	currentSize := len(sockets.sockets)
+	newSize := currentSize * 2
+
+	for range newSize - currentSize {
+		sockets.sockets = append(sockets.sockets, nil)
+	}
+}
+
+func (sockets *EventSockets) halfSizeUnsafe() {
+	currentSize := len(sockets.sockets)
+	newSize := currentSize / 2
+
+	newSlice := make([]*SocketData, newSize)
+	count := 0
+	for _, c := range sockets.sockets {
+		if c != nil {
+			// append to back since we usually
+			// start appending from the front
+			newSlice[newSize-count-1] = c
+			count++
+		}
+	}
+
+	fmt.Printf("moved %d sockets to the new slice of sice %d, down from %d\n", count, newSize, currentSize)
+	sockets.sockets = newSlice
 }
