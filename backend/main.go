@@ -148,6 +148,10 @@ func watchEvents(c *gin.Context, eventSockets *channels.EventSockets) {
 }
 
 func main() {
+	fmt.Println("Starting backend...")
+	frontendUrl := os.Getenv("FRONTEND_URL")
+	fmt.Printf("Looking for connections from %s\n", frontendUrl)
+
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
 	r.Use(xssMdlwr.RemoveXss())
@@ -155,20 +159,11 @@ func main() {
 
 	eventSockets := channels.New()
 
-	mode := os.Getenv("MODE")
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST", "DELETE"}
 	config.AllowOriginFunc = func(origin string) bool {
 		fmt.Println(origin)
-		switch mode {
-		case "production":
-			return origin == "https://cantseewater.online"
-		case "local":
-			return origin == "http://localhost:3000"
-		default:
-			fmt.Println(fmt.Errorf("did not recognize the deployement mode: %s", mode))
-			return false
-		}
+		return origin == frontendUrl
 	}
 	r.Use(cors.New(config))
 

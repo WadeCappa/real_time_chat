@@ -1,17 +1,6 @@
 
-const apiUrl = 'https://api.cantseewater.online';
-const devUrl = 'http://localhost:8080'
-
 function getUrl() {
-    switch (process.env.REACT_APP_DEPLOYMENT) {
-        case "production":
-            return apiUrl;
-        case "local":
-            return devUrl;
-        default:
-            console.error(process.env.REACT_APP_DEPLOYMENT)
-            throw new Error("Unrecognized deployement type")
-    }
+    return process.env.REACT_APP_BACKEND_URL;
 }
 
 export function WatchForNewMessages(singleMessageSetter, messageDeleter) {
@@ -72,5 +61,4 @@ export function DeleteMessages(messageIdsToDelete) {
     .catch(error => {
         console.error('Error:', error);
     });
-
 }

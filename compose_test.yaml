@@ -1,0 +1,50 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    container_name: 'rabbitmq'
+    ports:
+        - 5672:5672
+        - 15672:15672
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "5672" ]
+      interval: 2s
+      timeout: 10s
+      retries: 100
+  db:
+    build: db 
+    user: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=e
+      - POSTGRES_USER=e
+      - POSTGRES_DB=e
+  backend:
+    build: backend 
+    ports:
+      - "8080:8080"
+    environment:
+      - POSTGRES_PASSWORD=e
+      - POSTGRES_USER=e
+      - PGUSER=e
+      - POSTGRES_DB=e
+      - FRONTEND_URL=$FRONTEND_URL
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  frontend:
+    build: 
+      context: frontend
+      args:
+        - BACKEND_URL=$BACKEND_URL
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+secrets:
+  postgres_db:
+    file: secrets/postgres_db.txt
+  postgres_db_user:
+    file: secrets/postgres_db_user.txt
+  postgres_db_password:
+    file: secrets/postgres_pass.txt

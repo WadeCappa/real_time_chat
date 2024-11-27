@@ -25,7 +25,10 @@ services:
     volumes: 
       - db_volume:/var/lib/postgresql/data
   backend:
-    build: backend 
+    build: 
+      context: backend 
+      args:
+        - FRONTEND_URL=https://cantseewater.online
     ports:
       - "8080:8080"
     environment:
@@ -33,7 +36,6 @@ services:
       - POSTGRES_USER=/run/secrets/postgres_db_user
       - PGUSER=/run/secrets/postgres_db_user
       - POSTGRES_DB=/run/secrets/postgres_db
-      - MODE=$MODE
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -41,7 +43,7 @@ services:
     build: 
       context: frontend
       args:
-        - MODE=$MODE
+        - BACKEND_URL=https://api.cantseewater.online
     ports:
       - "3000:3000"
     depends_on:

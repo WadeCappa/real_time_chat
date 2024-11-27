@@ -1,1 +1,1 @@
-echo "REACT_APP_DEPLOYMENT=$1" > .env
+echo "REACT_APP_BACKEND_URL=$1" > .env

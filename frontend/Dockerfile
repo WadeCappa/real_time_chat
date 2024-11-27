@@ -5,8 +5,8 @@ WORKDIR /app
 
 COPY . .
 
-ARG MODE
-RUN ./setup_env.sh $MODE
+ARG BACKEND_URL
+RUN ./setup_env.sh $BACKEND_URL
 
 RUN npm install
 RUN npm install -g serve
