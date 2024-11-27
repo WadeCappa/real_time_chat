@@ -18,6 +18,10 @@ services:
     user: postgres
     ports:
       - "5432:5432"
+    secrets:
+      - postgres_db
+      - postgres_db_user
+      - postgres_db_password
     environment:
       - POSTGRES_PASSWORD=/run/secrets/postgres_db_password
       - POSTGRES_USER=/run/secrets/postgres_db_user
@@ -34,8 +38,11 @@ services:
     environment:
       - POSTGRES_PASSWORD=/run/secrets/postgres_db_password
       - POSTGRES_USER=/run/secrets/postgres_db_user
-      - PGUSER=/run/secrets/postgres_db_user
       - POSTGRES_DB=/run/secrets/postgres_db
+    secrets:
+      - postgres_db
+      - postgres_db_user
+      - postgres_db_password
     depends_on:
       rabbitmq:
         condition: service_healthy

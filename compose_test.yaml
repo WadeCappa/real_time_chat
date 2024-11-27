@@ -26,7 +26,6 @@ services:
     environment:
       - POSTGRES_PASSWORD=e
       - POSTGRES_USER=e
-      - PGUSER=e
       - POSTGRES_DB=e
       - FRONTEND_URL=$FRONTEND_URL
     depends_on:
