@@ -17,16 +17,17 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_PASSWORD=e
-      - POSTGRES_USER=e
-      - POSTGRES_DB=e
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=db
   backend:
     build: backend 
     ports:
       - "8080:8080"
     environment:
       - POSTGRES_PASSWORD=e
-      - POSTGRES_USER=e
-      - POSTGRES_DB=e
+      - POSTGRES_USER=postgres
+      - PGUSER=postgres
+      - POSTGRES_DB=db
       - FRONTEND_URL=$FRONTEND_URL
     depends_on:
       rabbitmq:
