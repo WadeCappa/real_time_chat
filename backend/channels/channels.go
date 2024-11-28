@@ -47,7 +47,7 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte, offset *atomic.I
 	defer sockets.globalLock.Unlock()
 	sockets.lastId++
 	sockets.socketsInUse++
-	defer fmt.Printf("created channel of id %d\n", sockets.lastId)
+	defer fmt.Printf("created channel of id %d with total channels of %d\n", sockets.lastId, sockets.socketsInUse)
 	for i := range sockets.sockets {
 		c := sockets.sockets[i]
 		if c == nil {
