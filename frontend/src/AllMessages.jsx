@@ -15,7 +15,11 @@ export default function AllMessages() {
     WatchForNewMessages((m) => {
       console.log(m)
       console.log(messagesRef.current)
-      messagesRef.current = [m, ...messagesRef.current]
+      if (messagesRef.current.length() === 0) {
+        messagesRef.current = [m]
+      } else {
+        messagesRef.current = [m, ...messagesRef.current]
+      }
       setMessages(messagesRef.current)
     }, (e) => {
       console.log(e)
