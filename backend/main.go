@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/channels"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/IBM/sarama"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
@@ -95,19 +95,18 @@ func createMessage(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func watchChat(c *gin.Context) {
+func watchChat(c *gin.Context, eventSockets *channels.EventSockets) {
+	socketChannel := make(chan []byte)
+	newId := eventSockets.AddChannel(socketChannel)
+	defer eventSockets.RemoveChannel(newId)
+
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Flush()
 	fmt.Println("connected with client")
 
-	startSubscriber, err := StartSubscriber(sarama.OffsetOldest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	for newEvent := range startSubscriber {
+	for {
+		newEvent := <-socketChannel
 		select {
 		case <-c.Request.Context().Done():
 			// exit when done
@@ -131,6 +130,8 @@ func main() {
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
+	eventSockets := channels.New()
+
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST", "DELETE"}
 	config.AllowOriginFunc = func(origin string) bool {
@@ -138,6 +139,19 @@ func main() {
 		return origin == frontendUrl
 	}
 	r.Use(cors.New(config))
+
+	var subscriber, err = StartSubscriber()
+	for err != nil {
+		subscriber, err = StartSubscriber()
+		time.Sleep(time.Second * 5)
+	}
+
+	go func() {
+		for {
+			newEvent := <-subscriber
+			eventSockets.FanInMessage(newEvent)
+		}
+	}()
 
 	r.DELETE("/", func(c *gin.Context) {
 		deleteMessage(c)
@@ -148,7 +162,7 @@ func main() {
 	})
 
 	r.GET("/watch", func(c *gin.Context) {
-		watchChat(c)
+		watchChat(c, eventSockets)
 	})
 
 	r.Run()

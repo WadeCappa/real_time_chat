@@ -36,7 +36,7 @@ func StartPublisher() (chan []byte, error) {
 	return eventChannel, nil
 }
 
-func StartSubscriber(offset int64) (<-chan []byte, error) {
+func StartSubscriber() (<-chan []byte, error) {
 	subscriber, err := getSubscriber(kafkaHostnames)
 	if err != nil {
 		fmt.Println(err)
@@ -47,12 +47,11 @@ func StartSubscriber(offset int64) (<-chan []byte, error) {
 
 	go func() {
 		defer subscriber.Close()
-		consumer, err := subscriber.ConsumePartition(topic, 0, offset)
+		consumer, err := subscriber.ConsumePartition(topic, 0, sarama.OffsetOldest)
 		if err != nil {
 			panic(err)
 		}
 		defer consumer.Close()
-		defer fmt.Println("Closed consumer")
 
 		for message := range consumer.Messages() {
 			readEvents <- message.Value
