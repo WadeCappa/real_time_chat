@@ -56,7 +56,7 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte, offset *atomic.I
 				uniqueId: sockets.lastId,
 			}
 			sockets.sockets[i] = &newChannel
-			return sockets.lastId, offset.Load() - 1
+			return sockets.lastId, offset.Load() + 1
 		}
 	}
 
@@ -69,7 +69,7 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte, offset *atomic.I
 		channel:  newChannel,
 		uniqueId: sockets.lastId,
 	}
-	return sockets.lastId, offset.Load() - 1
+	return sockets.lastId, offset.Load() + 1
 }
 
 func (sockets *EventSockets) RemoveChannel(id int64) {
