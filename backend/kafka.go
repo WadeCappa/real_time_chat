@@ -36,14 +36,14 @@ func StartPublisher() (chan []byte, error) {
 	return eventChannel, nil
 }
 
-func StartSubscriber() (<-chan []byte, error) {
+func StartSubscriber() (<-chan *sarama.ConsumerMessage, error) {
 	subscriber, err := getSubscriber(kafkaHostnames)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
-	readEvents := make(chan []byte)
+	readEvents := make(chan *sarama.ConsumerMessage)
 
 	go func() {
 		defer subscriber.Close()
@@ -54,11 +54,36 @@ func StartSubscriber() (<-chan []byte, error) {
 		defer consumer.Close()
 
 		for message := range consumer.Messages() {
-			readEvents <- message.Value
+			readEvents <- message
 		}
 	}()
 
 	return readEvents, nil
+}
+
+func ReadUntilOffset(consumer func([]byte) error, offset int64) error {
+	subscriber, err := getSubscriber(kafkaHostnames)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	defer subscriber.Close()
+
+	kafka, err := subscriber.ConsumePartition(topic, 0, sarama.OffsetOldest)
+	if err != nil {
+		return err
+	}
+	defer kafka.Close()
+
+	for message := range kafka.Messages() {
+		if message.Offset >= offset {
+			// we arrived at offset, exit
+			return nil
+		}
+		consumer(message.Value)
+	}
+
+	return nil
 }
 
 func getPublisher(brokersUrl []string) (sarama.SyncProducer, error) {

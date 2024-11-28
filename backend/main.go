@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -95,18 +96,13 @@ func createMessage(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func watchChat(c *gin.Context, eventSockets *channels.EventSockets) {
-	socketChannel := make(chan []byte)
-	newId := eventSockets.AddChannel(socketChannel)
-	defer eventSockets.RemoveChannel(newId)
-
+func watchChat(c *gin.Context, eventSockets *channels.EventSockets, currentOffset *atomic.Int64) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Flush()
 	fmt.Println("connected with client")
 
-	for {
-		newEvent := <-socketChannel
+	eventConsumer := func(newEvent []byte) {
 		select {
 		case <-c.Request.Context().Done():
 			// exit when done
@@ -117,6 +113,20 @@ func watchChat(c *gin.Context, eventSockets *channels.EventSockets) {
 		c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
 		c.Writer.Write([]byte("\n"))
 		c.Writer.Flush()
+	}
+
+	socketChannel := make(chan []byte)
+	newId, offset := eventSockets.AddChannel(socketChannel, currentOffset)
+	defer eventSockets.RemoveChannel(newId)
+
+	ReadUntilOffset(func(data []byte) error {
+		eventConsumer(data)
+		return nil
+	}, offset)
+
+	for {
+		newEvent := <-socketChannel
+		eventConsumer(newEvent)
 	}
 }
 
@@ -140,16 +150,22 @@ func main() {
 	}
 	r.Use(cors.New(config))
 
+	// we do this while kafta is starting. We could also do this in docker-compose
+	// with a health check
 	var subscriber, err = StartSubscriber()
 	for err != nil {
 		subscriber, err = StartSubscriber()
 		time.Sleep(time.Second * 5)
 	}
 
+	var currentOffset atomic.Int64
+	currentOffset.Store(0)
+
 	go func() {
 		for {
 			newEvent := <-subscriber
-			eventSockets.FanInMessage(newEvent)
+			currentOffset.Store(newEvent.Offset)
+			eventSockets.FanInMessage(newEvent.Value)
 		}
 	}()
 
@@ -162,7 +178,7 @@ func main() {
 	})
 
 	r.GET("/watch", func(c *gin.Context) {
-		watchChat(c, eventSockets)
+		watchChat(c, eventSockets, &currentOffset)
 	})
 
 	r.Run()
