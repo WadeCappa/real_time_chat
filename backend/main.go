@@ -2,17 +2,18 @@ package main
 
 import (
 	"backend/channels"
-	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
+	"math/rand/v2"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
-	amqp "github.com/rabbitmq/amqp091-go"
 	xss "github.com/sahilchopra/gin-gonic-xss-middleware"
 )
 
@@ -30,7 +31,7 @@ type Message struct {
 	PostId     int64
 }
 
-func deleteMessage(c *gin.Context, writeChannel *amqp.Channel) {
+func deleteMessage(c *gin.Context) {
 	fmt.Println("received delete request")
 	var deleteRequest messageDeleteRequest
 	if err := c.BindJSON(&deleteRequest); err != nil {
@@ -42,12 +43,11 @@ func deleteMessage(c *gin.Context, writeChannel *amqp.Channel) {
 		fmt.Printf("deleting message %d\n", postId)
 	}
 
-	callWithDb(func(postgres *sql.DB) {
-		if err := deletePost(postgres, deleteRequest); err != nil {
-			c.JSON(http.StatusBadRequest, "Failed to delete post")
-			return
-		}
-	})
+	publisher, err := StartPublisher()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
 	for _, p := range deleteRequest.PostIds {
 		payload := gin.H{"Payload": p, "Name": "deleteMessage"}
@@ -56,16 +56,13 @@ func deleteMessage(c *gin.Context, writeChannel *amqp.Channel) {
 			fmt.Println(err.Error())
 			return
 		}
-		if err := writeToRabbit(writeChannel, data); err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+		publisher <- data
 	}
 
 	c.Status(http.StatusOK)
 }
 
-func createMessage(c *gin.Context, writeChannel *amqp.Channel) {
+func createMessage(c *gin.Context) {
 	fmt.Println("received write request")
 	var messagePost messagePostRequest
 	if err := c.BindJSON(&messagePost); err != nil {
@@ -76,64 +73,36 @@ func createMessage(c *gin.Context, writeChannel *amqp.Channel) {
 	timePosted := time.Now()
 	fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
 
-	res, err := runWithDb(func(postgres *sql.DB) (*Message, error) {
-		messages, err := writePost(postgres, messagePost, timePosted)
-		if err != nil {
-			return nil, err
-		}
-
-		return messages, nil
-	})
+	publisher, err := StartPublisher()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, "Failed to write post")
 		fmt.Println(err.Error())
 		return
 	}
 
-	payload := gin.H{"Payload": *res, "Name": "newMessage"}
+	newMessage := Message{
+		Content:    messagePost.Content,
+		TimePosted: timePosted,
+		PostId:     rand.Int64N(math.MaxInt64),
+	}
+
+	payload := gin.H{"Payload": newMessage, "Name": "newMessage"}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	if err := writeToRabbit(writeChannel, data); err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	publisher <- data
 
 	c.Status(http.StatusOK)
 }
 
-func loadMessages(c *gin.Context) {
-	fmt.Println("received get request")
-	res, err := runWithDb(func(postgres *sql.DB) (*[]Message, error) {
-		res, err := getMessages(postgres)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, "Failed to get posts")
-		fmt.Println(err.Error())
-		return
-	}
-	c.JSON(http.StatusOK, *res)
-}
-
-func watchEvents(c *gin.Context, eventSockets *channels.EventSockets) {
-	socketChannel := make(chan []byte)
-	newId := eventSockets.AddChannel(socketChannel)
-	defer eventSockets.RemoveChannel(newId)
-
+func watchChat(c *gin.Context, eventSockets *channels.EventSockets, currentOffset *atomic.Int64) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Flush()
 	fmt.Println("connected with client")
 
-	for {
-		newEvent := <-socketChannel
+	eventConsumer := func(newEvent []byte) {
 		select {
 		case <-c.Request.Context().Done():
 			// exit when done
@@ -144,6 +113,20 @@ func watchEvents(c *gin.Context, eventSockets *channels.EventSockets) {
 		c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
 		c.Writer.Write([]byte("\n"))
 		c.Writer.Flush()
+	}
+
+	socketChannel := make(chan []byte)
+	newId, offset := eventSockets.AddChannel(socketChannel, currentOffset)
+	defer eventSockets.RemoveChannel(newId)
+
+	ReadUntilOffset(func(data []byte) error {
+		eventConsumer(data)
+		return nil
+	}, offset)
+
+	for {
+		newEvent := <-socketChannel
+		eventConsumer(newEvent)
 	}
 }
 
@@ -167,61 +150,35 @@ func main() {
 	}
 	r.Use(cors.New(config))
 
-	rabbit, err := amqp.Dial("amqp://guest:guest@rabbitmq/")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer rabbit.Close()
-
-	writeChannel, err := rabbit.Channel()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer writeChannel.Close()
-
-	exchangeError := writeChannel.ExchangeDeclare(
-		"events",
-		"fanout",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if exchangeError != nil {
-		fmt.Println(exchangeError.Error())
-		return
+	// we do this while kafta is starting. We could also do this in docker-compose
+	// with a health check
+	var subscriber, err = StartSubscriber()
+	for err != nil {
+		subscriber, err = StartSubscriber()
+		time.Sleep(time.Second * 5)
 	}
 
-	killChannel := make(chan bool)
-	listener, err := consumeRabbitEvents(rabbit, killChannel)
-	if err != nil {
-		killChannel <- true
-		fmt.Println(err.Error())
-		return
-	}
+	var currentOffset atomic.Int64
+	currentOffset.Store(0)
 
 	go func() {
 		for {
-			newEvent := <-listener
-			eventSockets.FanInMessage(newEvent.Body)
+			newEvent := <-subscriber
+			currentOffset.Store(newEvent.Offset)
+			eventSockets.FanInMessage(newEvent.Value)
 		}
 	}()
 
 	r.DELETE("/", func(c *gin.Context) {
-		deleteMessage(c, writeChannel)
+		deleteMessage(c)
 	})
 
 	r.POST("/", func(c *gin.Context) {
-		createMessage(c, writeChannel)
+		createMessage(c)
 	})
 
-	r.GET("/", loadMessages)
-
 	r.GET("/watch", func(c *gin.Context) {
-		watchEvents(c, eventSockets)
+		watchChat(c, eventSockets, &currentOffset)
 	})
 
 	r.Run()

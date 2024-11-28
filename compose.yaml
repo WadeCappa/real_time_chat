@@ -1,33 +1,29 @@
 services:
-  rabbitmq:
-    image: rabbitmq:4-alpine
-    container_name: 'rabbitmq'
-    ports:
-        - 5672:5672
-        - 15672:15672
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "5672" ]
-      interval: 2s
-      timeout: 10s
-      retries: 5
-    volumes:
-        - rabbit_lib:/var/lib/rabbitmq/
-        - rabbit_log:/var/log/rabbitmq
-  db:
-    build: db 
-    user: postgres
-    ports:
-      - "5432:5432"
-    secrets:
-      - postgres_db
-      - postgres_db_user
-      - postgres_db_password
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
     environment:
-      - POSTGRES_PASSWORD=/run/secrets/postgres_db_password
-      - POSTGRES_USER=/run/secrets/postgres_db_user
-      - POSTGRES_DB=/run/secrets/postgres_db
-    volumes: 
-      - db_volume:/var/lib/postgresql/data
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 2181:2181
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
   backend:
     build: 
       context: backend 
@@ -35,17 +31,6 @@ services:
         - FRONTEND_URL=https://cantseewater.online
     ports:
       - "8080:8080"
-    environment:
-      - POSTGRES_PASSWORD=/run/secrets/postgres_db_password
-      - POSTGRES_USER=/run/secrets/postgres_db_user
-      - POSTGRES_DB=/run/secrets/postgres_db
-    secrets:
-      - postgres_db
-      - postgres_db_user
-      - postgres_db_password
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
   frontend:
     build: 
       context: frontend
@@ -65,15 +50,9 @@ services:
       - $PWD/caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
-secrets:
-  postgres_db:
-    file: secrets/postgres_db.txt
-  postgres_db_user:
-    file: secrets/postgres_db_user.txt
-  postgres_db_password:
-    file: secrets/postgres_pass.txt
 volumes:
-  db_volume:
+  kafka_data:
+  zookeeper_data:
   caddy_data:
   caddy_config:
   rabbit_lib:

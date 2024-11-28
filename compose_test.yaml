@@ -1,37 +1,31 @@
 services:
-  rabbitmq:
-    image: rabbitmq:4-alpine
-    container_name: 'rabbitmq'
-    ports:
-        - 5672:5672
-        - 15672:15672
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "5672" ]
-      interval: 2s
-      timeout: 10s
-      retries: 100
-  db:
-    build: db 
-    user: postgres
-    ports:
-      - "5432:5432"
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
     environment:
-      - POSTGRES_PASSWORD=e
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=db
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 2181:2181
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   backend:
     build: backend 
     ports:
       - "8080:8080"
     environment:
-      - POSTGRES_PASSWORD=e
-      - POSTGRES_USER=postgres
-      - PGUSER=postgres
-      - POSTGRES_DB=db
       - FRONTEND_URL=$FRONTEND_URL
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
   frontend:
     build: 
       context: frontend
@@ -41,10 +35,3 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-secrets:
-  postgres_db:
-    file: secrets/postgres_db.txt
-  postgres_db_user:
-    file: secrets/postgres_db_user.txt
-  postgres_db_password:
-    file: secrets/postgres_pass.txt

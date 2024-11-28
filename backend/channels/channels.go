@@ -3,15 +3,16 @@ package channels
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
 type SocketData struct {
-	uniqueId int
+	uniqueId int64
 	channel  chan []byte
 }
 type EventSockets struct {
 	sockets      []*SocketData
-	lastId       int
+	lastId       int64
 	globalLock   sync.Mutex
 	socketsInUse int
 }
@@ -41,7 +42,7 @@ func (sockets *EventSockets) FanInMessage(event []byte) {
 	}
 }
 
-func (sockets *EventSockets) AddChannel(newChannel chan []byte) int {
+func (sockets *EventSockets) AddChannel(newChannel chan []byte, offset *atomic.Int64) (int64, int64) {
 	sockets.globalLock.Lock()
 	defer sockets.globalLock.Unlock()
 	sockets.lastId++
@@ -55,7 +56,7 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte) int {
 				uniqueId: sockets.lastId,
 			}
 			sockets.sockets[i] = &newChannel
-			return sockets.lastId
+			return sockets.lastId, offset.Load()
 		}
 	}
 
@@ -68,10 +69,10 @@ func (sockets *EventSockets) AddChannel(newChannel chan []byte) int {
 		channel:  newChannel,
 		uniqueId: sockets.lastId,
 	}
-	return sockets.lastId
+	return sockets.lastId, offset.Load()
 }
 
-func (sockets *EventSockets) RemoveChannel(id int) {
+func (sockets *EventSockets) RemoveChannel(id int64) {
 	sockets.globalLock.Lock()
 	defer sockets.globalLock.Unlock()
 	for i := range sockets.sockets {
