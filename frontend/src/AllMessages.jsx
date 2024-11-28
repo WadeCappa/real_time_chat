@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react"
-import { GetMessages, DeleteMessages, WatchForNewMessages } from "./Model";
+import { DeleteMessages, WatchForNewMessages } from "./Model";
 import MessageForm from "./MessageForm";
 
 export default function AllMessages() {
@@ -8,10 +8,6 @@ export default function AllMessages() {
   const messagesRef = useRef(messages)
 
   useEffect(() => {
-    GetMessages((m) => {
-      messagesRef.current = m
-      setMessages(m)
-    });
     WatchForNewMessages((m) => {
       console.log(m)
       console.log(messagesRef.current)
