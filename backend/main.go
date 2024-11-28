@@ -103,13 +103,6 @@ func watchChat(c *gin.Context, eventSockets *channels.EventSockets, currentOffse
 	fmt.Println("connected with client")
 
 	eventConsumer := func(newEvent []byte) {
-		select {
-		case <-c.Request.Context().Done():
-			// exit when done
-			return
-		default:
-			// no-op, keep going
-		}
 		c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
 		c.Writer.Write([]byte("\n"))
 		c.Writer.Flush()
@@ -125,6 +118,13 @@ func watchChat(c *gin.Context, eventSockets *channels.EventSockets, currentOffse
 	}, offset)
 
 	for {
+		select {
+		case <-c.Request.Context().Done():
+			// exit when done
+			return
+		default:
+			// no-op, keep going
+		}
 		newEvent := <-socketChannel
 		eventConsumer(newEvent)
 	}
