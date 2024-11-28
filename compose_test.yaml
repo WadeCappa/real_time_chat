@@ -25,10 +25,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - POSTGRES_PASSWORD=e
-      - POSTGRES_USER=postgres
-      - PGUSER=postgres
-      - POSTGRES_DB=db
       - FRONTEND_URL=$FRONTEND_URL
   frontend:
     build: 
@@ -39,10 +35,3 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-secrets:
-  postgres_db:
-    file: secrets/postgres_db.txt
-  postgres_db_user:
-    file: secrets/postgres_db_user.txt
-  postgres_db_password:
-    file: secrets/postgres_pass.txt
