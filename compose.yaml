@@ -1,6 +1,6 @@
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: apache/zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -9,7 +9,7 @@ services:
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: apache/kafka:latest
     depends_on:
       - zookeeper
     ports:
