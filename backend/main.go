@@ -140,14 +140,15 @@ func main() {
 	}
 	r.Use(cors.New(config))
 
-	var publisher, err = StartPublisher()
+	var subscriber, err = StartSubscriber()
 	for err != nil {
-		publisher, err = StartPublisher()
+		subscriber, err = StartSubscriber()
+		time.Sleep(time.Second * 5)
 	}
 
 	go func() {
 		for {
-			newEvent := <-publisher
+			newEvent := <-subscriber
 			eventSockets.FanInMessage(newEvent)
 		}
 	}()

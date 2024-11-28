@@ -6,7 +6,7 @@ import (
 	"github.com/IBM/sarama"
 )
 
-var kafkaHostnames = []string{"kafka"}
+var kafkaHostnames = []string{"kafka:9092"}
 var topic string = "basic_topic"
 
 func StartPublisher() (chan []byte, error) {
@@ -36,7 +36,7 @@ func StartPublisher() (chan []byte, error) {
 	return eventChannel, nil
 }
 
-func StartSubscriber(topic string) (<-chan []byte, error) {
+func StartSubscriber() (<-chan []byte, error) {
 	subscriber, err := getSubscriber(kafkaHostnames)
 	if err != nil {
 		fmt.Println(err)
