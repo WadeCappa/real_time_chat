@@ -76,7 +76,8 @@ func ReadUntilOffset(consumer func([]byte) error, offset int64) error {
 	defer kafka.Close()
 
 	for message := range kafka.Messages() {
-		if message.Offset >= offset {
+		// read until we pass the offset of the last known message
+		if message.Offset > offset {
 			// we arrived at offset, exit
 			return nil
 		}
