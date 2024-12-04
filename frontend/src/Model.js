@@ -23,19 +23,6 @@ export function WatchForNewMessages(singleMessageSetter, messageDeleter) {
     return () => eventSource.close();
 }
 
-export function GetMessages(allDataSetter) {
-    const url = getUrl()
-    fetch(url + '/')
-    .then(response => {
-        console.log(response)
-        return response.json()
-    })
-    .then(data => allDataSetter(data))
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
-
 export function PostMessage(newMessage, messageSetter) {
     const url = getUrl()
     const request = {
