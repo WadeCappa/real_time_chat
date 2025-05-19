@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/auth"
 	"backend/channels"
 	"encoding/json"
 	"fmt"
@@ -63,6 +64,9 @@ func deleteMessage(c *gin.Context) {
 }
 
 func createMessage(c *gin.Context) {
+	userId := c.GetInt64(auth.CURRENT_USER_KEY)
+	fmt.Printf("looking at userid of %d\n", userId)
+
 	fmt.Println("received write request")
 	var messagePost messagePostRequest
 	if err := c.BindJSON(&messagePost); err != nil {
@@ -137,10 +141,9 @@ func main() {
 
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
+	r.Use(auth.Build())
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
-
-	eventSockets := channels.New()
 
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST", "DELETE"}
@@ -161,6 +164,7 @@ func main() {
 	var currentOffset atomic.Int64
 	currentOffset.Store(0)
 
+	eventSockets := channels.New()
 	go func() {
 		for {
 			newEvent := <-subscriber
