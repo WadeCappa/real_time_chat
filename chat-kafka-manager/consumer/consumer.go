@@ -82,7 +82,10 @@ func WatchChannel(brokersUrl []string, channelId int64, eventConsumer func(event
 		if err != nil {
 			return err
 		}
-		eventConsumer(event, metadata)
+		err = eventConsumer(event, metadata)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

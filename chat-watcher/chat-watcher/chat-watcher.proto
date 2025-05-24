@@ -1,0 +1,36 @@
+
+syntax = "proto3";
+
+option go_package = "github.com/WadeCappa/real_time_chat/chat-watcher/chat-watcher";
+package chat_watcher;
+
+service chatwatcherserver {
+  rpc WatchChannel (WatchChannelRequest) returns (stream WatchChannelResponse) {}
+}
+
+message WatchChannelResponse {
+    ChannelEvent event = 1;
+}
+
+message WatchChannelRequest {
+  int64 channelId = 1;
+}
+
+message NewMessageEvent {
+    string conent = 1;
+    int64 userId = 2;
+    int64 channelId = 3;
+    int64 timePostedUnixTime = 4;
+    int64 offest = 5;
+}
+
+message UnknownEvent {
+    string description = 1;
+}
+
+message ChannelEvent {
+    oneof EventUnion {
+        NewMessageEvent newMessage = 1;
+        UnknownEvent unknownEvent = 2;
+    }
+}
