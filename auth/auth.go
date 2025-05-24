@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/WadeCappa/authmaster/authmaster"
-	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -22,12 +20,6 @@ const (
 	CURRENT_USER_KEY = "current-user"
 	AUTH_HEADER_KEY  = "Authorization"
 )
-
-func Build(authServiceUrl string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authenticateUser(c, authServiceUrl)
-	}
-}
 
 func getUser(token, authUrl string) (*int64, error) {
 	testResult, err := runWithConnection(authUrl, func(conn *grpc.ClientConn) testResult {
@@ -72,30 +64,26 @@ func runWithConnection[T any](addr string, f func(conn *grpc.ClientConn) T) (*T,
 	return &res, nil
 }
 
-func authenticateUser(c *gin.Context, authServiceUrl string) {
-	token := c.Request.Header[AUTH_HEADER_KEY]
-	if token == nil {
-		fmt.Println("No auth header provided")
-		c.Status(http.StatusBadRequest)
-		c.Abort()
-		return
+func AuthenticateUser(ctx context.Context, authServiceUrl string) (*int64, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	fmt.Println(md)
+	if !ok {
+		return nil, fmt.Errorf("could not find auth header")
 	}
 
-	if len(token) != 1 {
-		fmt.Printf("too many auth tokens provided, this is unexpected (provided %d)\n", len(token))
-		c.Status(http.StatusBadRequest)
-		c.Abort()
-		return
+	t, ok := md["authorization"]
+	if !ok {
+		return nil, fmt.Errorf("no auth header provided")
 	}
 
-	userId, err := getUser(token[0], authServiceUrl)
+	if len(t) != 1 {
+		return nil, fmt.Errorf("too many auth headers")
+	}
+
+	userId, err := getUser(t[0], authServiceUrl)
 	if err != nil {
-		fmt.Printf("Encountered some error: %v\n", err)
-		c.Status(http.StatusInternalServerError)
-		c.Abort()
+		return nil, fmt.Errorf("Encountered some error reaching out to auth service: %v\n", err)
 	}
 
-	c.Set(CURRENT_USER_KEY, userId)
-	fmt.Printf("found user of id %d\n", userId)
-	c.Next()
+	return userId, nil
 }
