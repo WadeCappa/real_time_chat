@@ -1,0 +1,15 @@
+
+syntax = "proto3";
+option go_package = "github.com/WadeCappa/real_time_chat/chat-writer/chat-writer";
+package chat_writer;
+
+service chatwriterserver {
+  rpc PublishMessage (PublishMessageRequest) returns (PublishMessageResponse) {}
+}
+
+message PublishMessageResponse {}
+
+message PublishMessageRequest {
+  int64 channelId = 1;
+  string message = 2;
+}
