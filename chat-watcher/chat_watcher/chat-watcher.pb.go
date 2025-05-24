@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v3.19.6
-// source: chat-watcher/chat-watcher.proto
+// source: chat_watcher/chat-watcher.proto
 
 package chat_watcher
 
@@ -110,14 +110,12 @@ func (x *WatchChannelRequest) GetChannelId() int64 {
 }
 
 type NewMessageEvent struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Conent             string                 `protobuf:"bytes,1,opt,name=conent,proto3" json:"conent,omitempty"`
-	UserId             int64                  `protobuf:"varint,2,opt,name=userId,proto3" json:"userId,omitempty"`
-	ChannelId          int64                  `protobuf:"varint,3,opt,name=channelId,proto3" json:"channelId,omitempty"`
-	TimePostedUnixTime int64                  `protobuf:"varint,4,opt,name=timePostedUnixTime,proto3" json:"timePostedUnixTime,omitempty"`
-	Offest             int64                  `protobuf:"varint,5,opt,name=offest,proto3" json:"offest,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Conent        string                 `protobuf:"bytes,1,opt,name=conent,proto3" json:"conent,omitempty"`
+	UserId        int64                  `protobuf:"varint,2,opt,name=userId,proto3" json:"userId,omitempty"`
+	ChannelId     int64                  `protobuf:"varint,3,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NewMessageEvent) Reset() {
@@ -167,20 +165,6 @@ func (x *NewMessageEvent) GetUserId() int64 {
 func (x *NewMessageEvent) GetChannelId() int64 {
 	if x != nil {
 		return x.ChannelId
-	}
-	return 0
-}
-
-func (x *NewMessageEvent) GetTimePostedUnixTime() int64 {
-	if x != nil {
-		return x.TimePostedUnixTime
-	}
-	return 0
-}
-
-func (x *NewMessageEvent) GetOffest() int64 {
-	if x != nil {
-		return x.Offest
 	}
 	return 0
 }
@@ -235,9 +219,11 @@ type ChannelEvent struct {
 	//
 	//	*ChannelEvent_NewMessage
 	//	*ChannelEvent_UnknownEvent
-	EventUnion    isChannelEvent_EventUnion `protobuf_oneof:"EventUnion"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	EventUnion         isChannelEvent_EventUnion `protobuf_oneof:"EventUnion"`
+	TimePostedUnixTime int64                     `protobuf:"varint,3,opt,name=timePostedUnixTime,proto3" json:"timePostedUnixTime,omitempty"`
+	Offest             int64                     `protobuf:"varint,4,opt,name=offest,proto3" json:"offest,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ChannelEvent) Reset() {
@@ -295,6 +281,20 @@ func (x *ChannelEvent) GetUnknownEvent() *UnknownEvent {
 	return nil
 }
 
+func (x *ChannelEvent) GetTimePostedUnixTime() int64 {
+	if x != nil {
+		return x.TimePostedUnixTime
+	}
+	return 0
+}
+
+func (x *ChannelEvent) GetOffest() int64 {
+	if x != nil {
+		return x.Offest
+	}
+	return 0
+}
+
 type isChannelEvent_EventUnion interface {
 	isChannelEvent_EventUnion()
 }
@@ -315,24 +315,24 @@ var File_chat_watcher_chat_watcher_proto protoreflect.FileDescriptor
 
 const file_chat_watcher_chat_watcher_proto_rawDesc = "" +
 	"\n" +
-	"\x1fchat-watcher/chat-watcher.proto\x12\fchat_watcher\"H\n" +
+	"\x1fchat_watcher/chat-watcher.proto\x12\fchat_watcher\"H\n" +
 	"\x14WatchChannelResponse\x120\n" +
 	"\x05event\x18\x01 \x01(\v2\x1a.chat_watcher.ChannelEventR\x05event\"3\n" +
 	"\x13WatchChannelRequest\x12\x1c\n" +
-	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\"\xa7\x01\n" +
+	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\"_\n" +
 	"\x0fNewMessageEvent\x12\x16\n" +
 	"\x06conent\x18\x01 \x01(\tR\x06conent\x12\x16\n" +
 	"\x06userId\x18\x02 \x01(\x03R\x06userId\x12\x1c\n" +
-	"\tchannelId\x18\x03 \x01(\x03R\tchannelId\x12.\n" +
-	"\x12timePostedUnixTime\x18\x04 \x01(\x03R\x12timePostedUnixTime\x12\x16\n" +
-	"\x06offest\x18\x05 \x01(\x03R\x06offest\"0\n" +
+	"\tchannelId\x18\x03 \x01(\x03R\tchannelId\"0\n" +
 	"\fUnknownEvent\x12 \n" +
-	"\vdescription\x18\x01 \x01(\tR\vdescription\"\x9f\x01\n" +
+	"\vdescription\x18\x01 \x01(\tR\vdescription\"\xe7\x01\n" +
 	"\fChannelEvent\x12?\n" +
 	"\n" +
 	"newMessage\x18\x01 \x01(\v2\x1d.chat_watcher.NewMessageEventH\x00R\n" +
 	"newMessage\x12@\n" +
-	"\funknownEvent\x18\x02 \x01(\v2\x1a.chat_watcher.UnknownEventH\x00R\funknownEventB\f\n" +
+	"\funknownEvent\x18\x02 \x01(\v2\x1a.chat_watcher.UnknownEventH\x00R\funknownEvent\x12.\n" +
+	"\x12timePostedUnixTime\x18\x03 \x01(\x03R\x12timePostedUnixTime\x12\x16\n" +
+	"\x06offest\x18\x04 \x01(\x03R\x06offestB\f\n" +
 	"\n" +
 	"EventUnion2n\n" +
 	"\x11chatwatcherserver\x12Y\n" +

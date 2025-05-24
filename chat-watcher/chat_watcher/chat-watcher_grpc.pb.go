@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v3.19.6
-// source: chat-watcher/chat-watcher.proto
+// source: chat_watcher/chat-watcher.proto
 
 package chat_watcher
 
@@ -120,5 +120,5 @@ var Chatwatcherserver_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "chat-watcher/chat-watcher.proto",
+	Metadata: "chat_watcher/chat-watcher.proto",
 }

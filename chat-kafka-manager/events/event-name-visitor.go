@@ -5,10 +5,12 @@ import (
 )
 
 type eventNameVisitor struct {
+	EventVisitor
+
 	result string
 }
 
-func (v *eventNameVisitor) visitNewChatMessageEvent(e NewChatMessageEvent) {
+func (v *eventNameVisitor) VisitNewChatMessageEvent(e NewChatMessageEvent) {
 	v.result = constants.NEW_CHAT_MESSAGE_EVENT_NAME
 }
 

@@ -20,8 +20,6 @@ message NewMessageEvent {
     string conent = 1;
     int64 userId = 2;
     int64 channelId = 3;
-    int64 timePostedUnixTime = 4;
-    int64 offest = 5;
 }
 
 message UnknownEvent {
@@ -33,4 +31,6 @@ message ChannelEvent {
         NewMessageEvent newMessage = 1;
         UnknownEvent unknownEvent = 2;
     }
+    int64 timePostedUnixTime = 3;
+    int64 offest = 4;
 }

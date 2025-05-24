@@ -29,6 +29,16 @@ type chatWatcherServer struct {
 	chat_watcher.ChatwatcherserverServer
 }
 
+type createChannelEventVisitor struct {
+	events.EventVisitor
+
+	e chat_watcher.ChannelEvent
+}
+
+func (v *createChannelEventVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEvent) {
+	v.e = chat_watcher.ChannelEvent{EventUnion: &chat_watcher.ChannelEvent_NewMessage{NewMessage: &chat_watcher.NewMessageEvent{Conent: e.Content, UserId: e.UserId, ChannelId: e.ChannelId}}}
+}
+
 func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelRequest, server grpc.ServerStreamingServer[chat_watcher.WatchChannelResponse]) error {
 
 	userId, err := auth.AuthenticateUser(server.Context(), *authHostname)
@@ -42,7 +52,15 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 	}
 
 	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, func(e events.Event, m consumer.Metadata) error {
-		err := server.Send(&chat_watcher.WatchChannelResponse{Event: &chat_watcher.ChannelEvent{EventUnion: &chat_watcher.ChannelEvent_UnknownEvent{UnknownEvent: &chat_watcher.UnknownEvent{Description: "some event"}}}})
+		log.Println(e)
+		v := createChannelEventVisitor{}
+		v.e = chat_watcher.ChannelEvent{
+			EventUnion:         &chat_watcher.ChannelEvent_UnknownEvent{UnknownEvent: &chat_watcher.UnknownEvent{Description: fmt.Sprintf("%v", e)}},
+			TimePostedUnixTime: 0,
+			Offest:             0,
+		}
+		e.Visit(&v)
+		err := server.Send(&chat_watcher.WatchChannelResponse{Event: &v.e})
 		if err != nil {
 			return err
 		}
