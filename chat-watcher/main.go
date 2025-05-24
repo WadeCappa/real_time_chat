@@ -9,7 +9,7 @@ import (
 	"github.com/WadeCappa/real_time_chat/auth"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/consumer"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/events"
-	chat_watcher "github.com/WadeCappa/real_time_chat/chat-watcher/chat-watcher"
+	"github.com/WadeCappa/real_time_chat/chat-watcher/chat_watcher"
 	"google.golang.org/grpc"
 )
 
