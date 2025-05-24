@@ -24,6 +24,7 @@ func createMessage(e events.Event) ([]byte, error) {
 
 func getPublisher(brokersUrl []string) (sarama.SyncProducer, error) {
 	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
 	conn, err := sarama.NewSyncProducer(brokersUrl, config)
 	if err != nil {
 		return nil, err
@@ -73,10 +74,10 @@ func PublishChatMessageToChannel(brokersUrl []string, userId int64, message stri
 			"partition": partition,
 			"offset":    offset,
 		})
-		if err != nil {
+		if err == nil {
 			log.Print(string(logMessage))
 		} else {
-			log.Printf("Failed to log success!")
+			log.Printf("Failed to log success! %v", err)
 		}
 
 		return nil

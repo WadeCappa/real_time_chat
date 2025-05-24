@@ -1,189 +1,80 @@
 package main
 
 import (
-	"backend/channels"
-	"encoding/json"
-	"fmt"
-	"math"
-	"math/rand/v2"
+	"flag"
+	"log"
 	"net/http"
 	"os"
-	"sync/atomic"
-	"time"
 
-	"github.com/WadeCappa/real_time_chat/auth"
+	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/publisher"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq"
 	xss "github.com/sahilchopra/gin-gonic-xss-middleware"
 )
 
 type messagePostRequest struct {
-	Content string `form:"content" json:"content" xml:"content" binding:"required"`
+	Content   string `form:"content" json:"content" xml:"content" binding:"required"`
+	ChannelId int64  `form:"channelId" json:"channelId" xml:"channelId" binding:"required"`
 }
 
-type messageDeleteRequest struct {
-	PostIds []int64 `form:"postIds" json:"postIds" xml:"postIds" binding:"required"`
-}
+const (
+	DEFAULT_KAFKA_HOSTNAME = "localhost:9092"
+	DEFAULT_AUTH_HOSTNAME  = "localhost:50051"
+)
 
-type Message struct {
-	Content    string
-	TimePosted time.Time
-	PostId     int64
-}
-
-func deleteMessage(c *gin.Context) {
-	fmt.Println("received delete request")
-	var deleteRequest messageDeleteRequest
-	if err := c.BindJSON(&deleteRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	for _, postId := range deleteRequest.PostIds {
-		fmt.Printf("deleting message %d\n", postId)
-	}
-
-	publisher, err := StartPublisher()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	for _, p := range deleteRequest.PostIds {
-		payload := gin.H{"Payload": p, "Name": "deleteMessage"}
-		data, err := json.Marshal(payload)
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		publisher <- data
-	}
-
-	c.Status(http.StatusOK)
-}
+var (
+	authHostname  = flag.String("auth-hostname", DEFAULT_AUTH_HOSTNAME, "the hostname for the auth service")
+	kafkaHostname = flag.String("kafka-hostname", DEFAULT_KAFKA_HOSTNAME, "the hostname for kafka")
+)
 
 func createMessage(c *gin.Context) {
-	userId := c.GetInt64(auth.CURRENT_USER_KEY)
-	fmt.Printf("looking at userid of %d\n", userId)
+	// userId := c.GetInt64(auth.CURRENT_USER_KEY)
+	const userId int64 = 0
+	log.Printf("looking at userid of %d\n", userId)
 
-	fmt.Println("received write request")
+	log.Println("received write request")
 	var messagePost messagePostRequest
 	if err := c.BindJSON(&messagePost); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	timePosted := time.Now()
-	fmt.Printf("received write request for message of '%s'\n", messagePost.Content)
+	log.Printf("received write request for message of '%s'\n", messagePost.Content)
 
-	publisher, err := StartPublisher()
+	err := publisher.PublishChatMessageToChannel([]string{*kafkaHostname}, userId, messagePost.Content, messagePost.ChannelId)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Printf("Failed to write message: %v\n", err)
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	newMessage := Message{
-		Content:    messagePost.Content,
-		TimePosted: timePosted,
-		PostId:     rand.Int64N(math.MaxInt64),
-	}
-
-	payload := gin.H{"Payload": newMessage, "Name": "newMessage"}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	publisher <- data
-
+	log.Println("Successfully wrote message")
 	c.Status(http.StatusOK)
 }
 
-func watchChat(c *gin.Context, eventSockets *channels.EventSockets, currentOffset *atomic.Int64) {
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Flush()
-	fmt.Println("connected with client")
-
-	eventConsumer := func(newEvent []byte) {
-		c.Writer.Write([]byte(fmt.Sprintf("data: %s\n", newEvent)))
-		c.Writer.Write([]byte("\n"))
-		c.Writer.Flush()
-	}
-
-	socketChannel := make(chan []byte)
-	newId, offset := eventSockets.AddChannel(socketChannel, currentOffset)
-	defer eventSockets.RemoveChannel(newId)
-
-	ReadUntilOffset(func(data []byte) error {
-		eventConsumer(data)
-		return nil
-	}, offset)
-
-	for {
-		select {
-		case <-c.Request.Context().Done():
-			// exit when done
-			return
-		default:
-			// no-op, keep going
-		}
-		newEvent := <-socketChannel
-		eventConsumer(newEvent)
-	}
-}
-
 func main() {
-	fmt.Println("Starting backend...")
+	log.Println("Starting backend...")
 	frontendUrl := os.Getenv("FRONTEND_URL")
-	fmt.Printf("Looking for connections from %s\n", frontendUrl)
+	log.Printf("Looking for connections from %s\n", frontendUrl)
 
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
-	r.Use(auth.Build())
+	// r.Use(auth.Build())
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
 	config := cors.DefaultConfig()
 	config.AllowMethods = []string{"GET", "POST", "DELETE"}
 	config.AllowOriginFunc = func(origin string) bool {
-		fmt.Println(origin)
+		log.Println(origin)
 		return origin == frontendUrl
 	}
 	r.Use(cors.New(config))
 
-	// we do this while kafta is starting. We could also do this in docker-compose
-	// with a health check
-	var subscriber, err = StartSubscriber()
-	for err != nil {
-		subscriber, err = StartSubscriber()
-		time.Sleep(time.Second * 5)
-	}
-
-	var currentOffset atomic.Int64
-	currentOffset.Store(0)
-
-	eventSockets := channels.New()
-	go func() {
-		for {
-			newEvent := <-subscriber
-			currentOffset.Store(newEvent.Offset)
-			eventSockets.FanInMessage(newEvent.Value)
-		}
-	}()
-
-	r.DELETE("/", func(c *gin.Context) {
-		deleteMessage(c)
-	})
-
 	r.POST("/", func(c *gin.Context) {
 		createMessage(c)
-	})
-
-	r.GET("/watch", func(c *gin.Context) {
-		watchChat(c, eventSockets, &currentOffset)
 	})
 
 	r.Run()
