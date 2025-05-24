@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/WadeCappa/real_time_chat/auth"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/publisher"
 
 	"github.com/gin-contrib/cors"
@@ -29,8 +30,7 @@ var (
 )
 
 func createMessage(c *gin.Context) {
-	// userId := c.GetInt64(auth.CURRENT_USER_KEY)
-	const userId int64 = 0
+	userId := c.GetInt64(auth.CURRENT_USER_KEY)
 	log.Printf("looking at userid of %d\n", userId)
 
 	log.Println("received write request")
@@ -61,7 +61,7 @@ func main() {
 
 	r := gin.Default()
 	var xssMdlwr xss.XssMw
-	// r.Use(auth.Build())
+	r.Use(auth.Build(*authHostname))
 	r.Use(xssMdlwr.RemoveXss())
 	r.SetTrustedProxies(nil)
 
