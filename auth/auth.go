@@ -32,7 +32,7 @@ func getUser(token, authUrl string) (*int64, error) {
 	}
 
 	if testResult.err != nil {
-		return nil, err
+		return nil, testResult.err
 	}
 
 	return testResult.userId, nil
@@ -47,6 +47,10 @@ func test(conn *grpc.ClientConn, token string) (*int64, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if response == nil {
+		return nil, fmt.Errorf("did not receive either an error or a response from the auth server")
 	}
 
 	return &response.UserId, nil

@@ -36,7 +36,12 @@ func (s *chatWriterServer) PublishMessage(ctx context.Context, request *chat_wri
 		return nil, err
 	}
 
-	log.Printf("looking at userid of %d\n", userId)
+	if userId == nil {
+		log.Println("did not return a valid user id")
+		return nil, fmt.Errorf("returned an invalid userid")
+	}
+
+	log.Printf("looking at userid of %d\n", *userId)
 
 	if err := publisher.PublishChatMessageToChannel([]string{*kafkaHostname}, *userId, request.Message, request.ChannelId); err != nil {
 		return nil, err
