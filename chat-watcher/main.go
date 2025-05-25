@@ -95,9 +95,11 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 		return fmt.Errorf("returned an invalid userid")
 	}
 
+	log.Printf("getting caught up %d\n", request.ChannelId)
 	offset, err := getRecentMessages(request.ChannelId, func(rmrr *chat_db.ReadMostRecentResponse) error {
 		e := chat_watcher.ChannelEvent{EventUnion: &chat_watcher.ChannelEvent_NewMessage{NewMessage: &chat_watcher.NewMessageEvent{Conent: rmrr.Message, UserId: rmrr.UserId, ChannelId: rmrr.ChannelId}}}
 
+		log.Println(e)
 		err = server.Send(&chat_watcher.WatchChannelResponse{Event: &e})
 		if err != nil {
 			return fmt.Errorf("failed to send event while getting caught up: %v", err)
@@ -105,7 +107,11 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("failed to get recent messages from db: %v", err)
+	}
 
+	log.Printf("watching from offset %d\n", *offset)
 	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, *offset, func(e events.Event, m consumer.Metadata) error {
 		log.Println(e)
 		v := createChannelEventVisitor{}

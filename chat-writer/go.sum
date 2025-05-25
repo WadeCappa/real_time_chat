@@ -6,10 +6,14 @@ github.com/WadeCappa/real_time_chat/auth v0.0.0-20250524155422-74ad86f421ca h1:2
 github.com/WadeCappa/real_time_chat/auth v0.0.0-20250524155422-74ad86f421ca/go.mod h1:Fv/imBkBEhBf5Efjvb3TlAMffaoJirAu5V3LGnS4sMg=
 github.com/WadeCappa/real_time_chat/auth v0.0.0-20250524180307-55ed9814f56c h1:mTB3Q3/3TJ2NHY5U6VaQ4tvPwZej0IyQyw5UFOvB4WA=
 github.com/WadeCappa/real_time_chat/auth v0.0.0-20250524180307-55ed9814f56c/go.mod h1:Fv/imBkBEhBf5Efjvb3TlAMffaoJirAu5V3LGnS4sMg=
+github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525161932-a9cabdb73441 h1:BgabnJmjDaMnMJkggrB0n7sGexmNpMQ0iO+OiW5PuAE=
+github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525161932-a9cabdb73441/go.mod h1:Fv/imBkBEhBf5Efjvb3TlAMffaoJirAu5V3LGnS4sMg=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250524155422-74ad86f421ca h1:769U/wyWCPelIhe46wiR9tR9q251evvbh6evBafUGdA=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250524155422-74ad86f421ca/go.mod h1:dJTxMUT8swfWB/ev0G0q3r1aw0qWn7PKpSbJpLJQqac=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250524180307-55ed9814f56c h1:t/xihM04JQNbF8w5c0XEd/orY5xiD7tr8PuEZxPmMCo=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250524180307-55ed9814f56c/go.mod h1:dJTxMUT8swfWB/ev0G0q3r1aw0qWn7PKpSbJpLJQqac=
+github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441 h1:/uMghZyxsVuuxrVau+EF+ElKUwt8YKJq78dBl/rMFdc=
+github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441/go.mod h1:dJTxMUT8swfWB/ev0G0q3r1aw0qWn7PKpSbJpLJQqac=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

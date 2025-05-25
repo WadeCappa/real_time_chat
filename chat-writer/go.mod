@@ -3,8 +3,8 @@ module github.com/WadeCappa/real_time_chat/chat-writer
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250524180307-55ed9814f56c
-	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250524180307-55ed9814f56c
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525161932-a9cabdb73441
+	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441
 )
 
 require (

@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/WadeCappa/real_time_chat/chat-db/chat_db"
 	"github.com/WadeCappa/real_time_chat/chat-db/store"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/consumer"
@@ -62,12 +63,12 @@ func (v *updateDataVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEven
 func (s *chatDbServer) ReadMostRecent(request *chat_db.ReadMostRecentRequest, server grpc.ServerStreamingServer[chat_db.ReadMostRecentResponse]) error {
 
 	_, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*bool, error) {
-		scanner := s.Query(`select userId, offset, channelId, time_posted, content from posts_db.messages where channelId = ? limit ?`,
+		scanner := s.Query("select userId, offset, channelId, time_posted, content from posts_db.messages where channelId = ? limit ?",
 			request.ChannelId, DEFAULT_LOAD_BATCH_SIZE).Iter().Scanner()
 
 		for scanner.Next() {
 			var message message
-			err := scanner.Scan(&message)
+			err := scanner.Scan(&message.userId, &message.offset, &message.channelId, &message.time_posted, &message.content)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run scanner %v", err)
 			}
@@ -93,13 +94,14 @@ func (s *chatDbServer) ReadMostRecent(request *chat_db.ReadMostRecentRequest, se
 	return err
 }
 
-func listenAndWrite(channelId int64, kafkaUrl string, result chan error) {
-	err := consumer.WatchChannel([]string{kafkaUrl}, channelId, func(e events.Event, m consumer.Metadata) error {
+func listenAndWrite(channelId, offset int64, kafkaUrl string, result chan error) {
+	err := consumer.WatchChannel([]string{kafkaUrl}, channelId, offset, func(e events.Event, m consumer.Metadata) error {
 		v := updateDataVisitor{metadata: m}
 		err := e.Visit(&v)
 		if err != nil {
 			return fmt.Errorf("failed to visit data event %v", err)
 		}
+		log.Printf("successfully wrote message at offset %d", m.Offset)
 		return nil
 	})
 
@@ -115,7 +117,17 @@ func main() {
 
 	res := make(chan error)
 
-	go listenAndWrite(TESTING_CHANNEL_ID, *kafkaHostname, res)
+	currentOffset, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*int64, error) {
+		var currentOffset int64 = sarama.OffsetNewest
+		err := s.Query("select max(offset) from posts_db.messages where channelid = ?",
+			211).Consistency(gocql.One).Scan(&currentOffset)
+		return &currentOffset, err
+	})
+	if err != nil {
+		log.Printf("failed to find latest offset: %v", err)
+	}
+
+	go listenAndWrite(TESTING_CHANNEL_ID, *currentOffset, *kafkaHostname, res)
 
 	go func() {
 		err := <-res
