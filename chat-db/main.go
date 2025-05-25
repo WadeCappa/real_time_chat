@@ -128,17 +128,17 @@ func main() {
 
 	res := make(chan error)
 
-	currentOffset, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*int64, error) {
-		var currentOffset int64 = sarama.OffsetNewest
+	lastOffset, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*int64, error) {
+		var lastOffset int64 = sarama.OffsetNewest
 		err := s.Query("select max(offset) from posts_db.messages where channelid = ?",
-			211).Consistency(gocql.One).Scan(&currentOffset)
-		return &currentOffset, err
+			211).Consistency(gocql.One).Scan(&lastOffset)
+		return &lastOffset, err
 	})
 	if err != nil {
 		log.Printf("failed to find latest offset: %v", err)
 	}
 
-	go listenAndWrite(TESTING_CHANNEL_ID, *currentOffset, *kafkaHostname, res)
+	go listenAndWrite(TESTING_CHANNEL_ID, *lastOffset, *kafkaHostname, res)
 
 	go func() {
 		err := <-res

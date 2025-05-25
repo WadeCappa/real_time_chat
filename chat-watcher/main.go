@@ -44,7 +44,12 @@ type createChannelEventVisitor struct {
 }
 
 func (v *createChannelEventVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEvent) error {
-	v.e = chat_watcher.ChannelEvent{EventUnion: &chat_watcher.ChannelEvent_NewMessage{NewMessage: &chat_watcher.NewMessageEvent{Conent: e.Content, UserId: e.UserId, ChannelId: e.ChannelId}}}
+	v.e = chat_watcher.ChannelEvent{
+		EventUnion: &chat_watcher.ChannelEvent_NewMessage{
+			NewMessage: &chat_watcher.NewMessageEvent{
+				Conent:    e.Content,
+				UserId:    e.UserId,
+				ChannelId: e.ChannelId}}}
 	return nil
 }
 
@@ -68,8 +73,12 @@ func getRecentMessages(channelId int64, consumer func(*chat_db.ReadMostRecentRes
 	for {
 		e, err := response.Recv()
 		if err == io.EOF {
+			if offset != sarama.OffsetNewest {
+				offset = offset + 1
+			}
 			return &offset, nil
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to get next event: %v", err)
 		}
@@ -97,9 +106,14 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 
 	log.Printf("getting caught up %d\n", request.ChannelId)
 	offset, err := getRecentMessages(request.ChannelId, func(rmrr *chat_db.ReadMostRecentResponse) error {
-		e := chat_watcher.ChannelEvent{EventUnion: &chat_watcher.ChannelEvent_NewMessage{NewMessage: &chat_watcher.NewMessageEvent{Conent: rmrr.Message, UserId: rmrr.UserId, ChannelId: rmrr.ChannelId}}}
+		e := chat_watcher.ChannelEvent{EventUnion: &chat_watcher.ChannelEvent_NewMessage{
+			NewMessage: &chat_watcher.NewMessageEvent{
+				Conent:    rmrr.Message,
+				UserId:    rmrr.UserId,
+				ChannelId: rmrr.ChannelId,
+				Offset:    rmrr.Offset}}}
 
-		log.Println(e)
+		log.Println(&e)
 		err = server.Send(&chat_watcher.WatchChannelResponse{Event: &e})
 		if err != nil {
 			return fmt.Errorf("failed to send event while getting caught up: %v", err)
@@ -114,13 +128,14 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 		v := createChannelEventVisitor{}
 		v.e = chat_watcher.ChannelEvent{
 			EventUnion:         &chat_watcher.ChannelEvent_UnknownEvent{UnknownEvent: &chat_watcher.UnknownEvent{Description: fmt.Sprintf("%v", e)}},
-			TimePostedUnixTime: 0,
-			Offest:             0,
+			TimePostedUnixTime: m.TimePosted.Unix(),
+			Offest:             m.Offset,
 		}
 		err := e.Visit(&v)
 		if err != nil {
 			return fmt.Errorf("failed to visit event: %v", err)
 		}
+		v.e.Offest = m.Offset
 		err = server.Send(&chat_watcher.WatchChannelResponse{Event: &v.e})
 		if err != nil {
 			return fmt.Errorf("failed to send event: %v", err)

@@ -3,8 +3,8 @@ module github.com/WadeCappa/real_time_chat/chat-watcher
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525161932-a9cabdb73441
-	github.com/WadeCappa/real_time_chat/chat-db v0.0.0-20250525161932-a9cabdb73441
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525171252-8987816d4479
+	github.com/WadeCappa/real_time_chat/chat-db v0.0.0-20250525171252-8987816d4479
 )
 
 require (
@@ -35,7 +35,7 @@ require (
 require (
 	github.com/IBM/sarama v1.45.1
 	github.com/WadeCappa/authmaster v0.0.1 // indirect
-	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441
+	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525171252-8987816d4479
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect

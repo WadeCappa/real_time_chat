@@ -10,6 +10,8 @@ github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525005150-f93
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525005150-f93aad3507bd/go.mod h1:dJTxMUT8swfWB/ev0G0q3r1aw0qWn7PKpSbJpLJQqac=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441 h1:/uMghZyxsVuuxrVau+EF+ElKUwt8YKJq78dBl/rMFdc=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441/go.mod h1:dJTxMUT8swfWB/ev0G0q3r1aw0qWn7PKpSbJpLJQqac=
+github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525171252-8987816d4479 h1:JSSuG1vqlwmiDu/LIUKQr+0AynPQlDZsMqqcwiVUv30=
+github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525171252-8987816d4479/go.mod h1:dJTxMUT8swfWB/ev0G0q3r1aw0qWn7PKpSbJpLJQqac=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932/go.mod h1:NOuUCSz6Q9T7+igc/hlvDOUdtWKryOrtFyIVABv/p7k=

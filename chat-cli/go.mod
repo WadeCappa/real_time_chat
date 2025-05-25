@@ -3,16 +3,16 @@ module github.com/WadeCappa/real_time_chat/chat-cli
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/chat-watcher v0.0.0-20250525161932-a9cabdb73441
-	github.com/WadeCappa/real_time_chat/chat-writer v0.0.0-20250525161932-a9cabdb73441
+	github.com/WadeCappa/real_time_chat/chat-watcher v0.0.0-20250525171252-8987816d4479
+	github.com/WadeCappa/real_time_chat/chat-writer v0.0.0-20250525171252-8987816d4479
 	google.golang.org/grpc v1.72.1
 )
 
 require (
 	github.com/IBM/sarama v1.45.1 // indirect
 	github.com/WadeCappa/authmaster v0.0.1 // indirect
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525155309-26d1b473ce66 // indirect
-	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525155309-26d1b473ce66 // indirect
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525161932-a9cabdb73441 // indirect
+	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
