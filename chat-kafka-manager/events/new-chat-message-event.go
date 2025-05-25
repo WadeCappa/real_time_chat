@@ -8,6 +8,6 @@ type NewChatMessageEvent struct {
 	ChannelId int64
 }
 
-func (e NewChatMessageEvent) Visit(v EventVisitor) {
-	v.VisitNewChatMessageEvent(e)
+func (e NewChatMessageEvent) Visit(v EventVisitor) error {
+	return v.VisitNewChatMessageEvent(e)
 }

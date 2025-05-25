@@ -1,5 +1,5 @@
 package events
 
 type EventVisitor interface {
-	VisitNewChatMessageEvent(e NewChatMessageEvent)
+	VisitNewChatMessageEvent(e NewChatMessageEvent) error
 }

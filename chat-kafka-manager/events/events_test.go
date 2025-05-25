@@ -8,8 +8,11 @@ import (
 
 func TestEventNameVisitor(t *testing.T) {
 	newChatEvent := NewChatMessageEvent{}
-	name := GetName(newChatEvent)
-	if name != constants.NEW_CHAT_MESSAGE_EVENT_NAME {
+	name, err := GetName(newChatEvent)
+	if err != nil || name == nil {
+		t.Errorf("failed to get the correct name due to error %v", err)
+	}
+	if *name != constants.NEW_CHAT_MESSAGE_EVENT_NAME {
 		t.Errorf("failed to get the correct name")
 	}
 }

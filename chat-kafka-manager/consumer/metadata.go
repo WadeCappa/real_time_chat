@@ -1,3 +1,8 @@
 package consumer
 
-type Metadata struct{}
+import "time"
+
+type Metadata struct {
+	Offset     int64
+	TimePosted time.Time
+}

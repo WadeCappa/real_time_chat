@@ -17,7 +17,15 @@ func TestNewMessage(t *testing.T) {
 		if err != nil {
 			t.Errorf("failed to get event")
 		}
-		if events.GetName(event) != events.GetName(recoveredEvent) {
+		oldName, err := events.GetName(event)
+		if err != nil {
+			t.Errorf("could not get name for original event %v", err)
+		}
+		newName, err := events.GetName(recoveredEvent)
+		if err != nil {
+			t.Errorf("could not get name for new event %v", err)
+		}
+		if *oldName != *newName {
 			t.Errorf("did not get the same event type")
 		}
 		if event != recoveredEvent {

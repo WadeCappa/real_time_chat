@@ -55,8 +55,11 @@ func getSubscriber(brokersUrl []string) (sarama.Consumer, error) {
 	return conn, nil
 }
 
-func getMetadata(_ *sarama.ConsumerMessage) (Metadata, error) {
-	return Metadata{}, nil
+func getMetadata(m *sarama.ConsumerMessage) (Metadata, error) {
+	return Metadata{
+		Offset:     m.Offset,
+		TimePosted: m.Timestamp,
+	}, nil
 }
 
 func WatchChannel(brokersUrl []string, channelId int64, eventConsumer func(events.Event, Metadata) error) error {

@@ -15,8 +15,13 @@ func createMessage(e events.Event) ([]byte, error) {
 		return nil, err
 	}
 
+	name, err := events.GetName(e)
+	if err != nil || name == nil {
+		return nil, err
+	}
+
 	eventAndHeader := events.EventAndHeader{
-		Header: events.GetName(e),
+		Header: *name,
 		Data:   data,
 	}
 	return json.Marshal(eventAndHeader)

@@ -25,7 +25,11 @@ func TestPublishAndReadMessage(t *testing.T) {
 	const channelId int64 = 12
 	go func() {
 		err := consumer.WatchChannel(urls, channelId, func(e events.Event, m consumer.Metadata) error {
-			if events.GetName(e) != constants.NEW_CHAT_MESSAGE_EVENT_NAME {
+			name, err := events.GetName(e)
+			if err != nil || name == nil {
+				t.Errorf("failed to get name %v", err)
+			}
+			if *name != constants.NEW_CHAT_MESSAGE_EVENT_NAME {
 				t.Errorf("failed to get the correct event")
 			} else {
 				log.Printf("got event %v", e)
