@@ -1,0 +1,85 @@
+
+syntax = "proto3";
+option go_package = "github.com/WadeCappa/real_time_chat/channel-manager/external-channel-manager";
+package external_channel_manager;
+
+service externalchannelmanager {
+  rpc CreateChannel (CreateChannelRequest) returns (CreateChannelResponse) {}
+  rpc DeleteChannel (DeleteChannelRequest) returns (DeleteChannelResponse) {}
+  
+  rpc ChangeChannelVisibility (ChangeChannelVisibilityRequest) returns (ChangeChannelVisibilityResponse) {}
+
+  rpc JoinChannel (JoinChannelRequest) returns (JoinChannelResponse) {}
+  rpc AddToChannel (AddToChannelRequest) returns (AddToChannelResponse) {}
+
+  rpc GetChannels (GetChannelsRequest) returns (stream GetChannelsResponse) {}
+  
+  rpc GetAllChannels (GetAllChannelsRequest) returns (stream GetAllChannelsResponse) {}
+
+  rpc CanWatch (CanWatchRequest) returns (CanWatchResponse) {}
+  rpc CanWrite (CanWriteRequest) returns (CanWriteResponse) {}
+}
+
+message CreateChannelRequest {
+  bool public = 1;
+  string name = 2;
+}
+
+message CreateChannelResponse {
+    int64 channelId = 1;
+}
+
+message DeleteChannelRequest {
+    int64 channelId = 1;
+}
+
+message DeleteChannelResponse {}
+
+message ChangeChannelVisibilityRequest {
+    int64 channelId = 1;
+    bool public = 2;
+}
+
+message ChangeChannelVisibilityResponse {}
+
+message JoinChannelRequest {
+    int64 channelId = 1;
+}
+
+message JoinChannelResponse {}
+
+message AddToChannelRequest {
+    int64 channelId = 1;
+    int64 userId = 2;
+}
+
+message AddToChannelResponse {}
+
+message GetChannelsRequest {
+    string prefixSearch = 1;
+}
+
+message GetChannelsResponse {
+    int64 channelId = 1;
+    string channelName = 2;
+}
+
+message GetAllChannelsRequest {}
+
+message GetAllChannelsResponse {
+    int64 channelId = 1;
+}
+
+message CanWatchRequest {
+  int64 channelId = 1;
+  int64 userId = 2;
+}
+
+message CanWatchResponse {}
+
+message CanWriteRequest {
+  int64 channelId = 1;
+  int64 userId = 2;
+}
+
+message CanWriteResponse {}

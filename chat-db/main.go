@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -51,8 +52,13 @@ type updateDataVisitor struct {
 
 func (v *updateDataVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEvent) error {
 	_, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*bool, error) {
-		err := s.Query("insert into posts_db.messages (userId, offset, channelId, time_posted, content) values (?, ?, ?, ?, ?)",
-			e.UserId, v.metadata.Offset, e.ChannelId, v.metadata.TimePosted, e.Content).Exec()
+		err := s.Query(
+			"insert into posts_db.messages (userId, offset, channelId, time_posted, content) values (?, ?, ?, ?, ?)",
+			e.UserId,
+			v.metadata.Offset,
+			e.ChannelId,
+			v.metadata.TimePosted,
+			e.Content).WithContext(context.Background()).Exec()
 		return nil, err
 	})
 	if err != nil {
@@ -64,8 +70,10 @@ func (v *updateDataVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEven
 func (s *chatDbServer) ReadMostRecent(request *chat_db.ReadMostRecentRequest, server grpc.ServerStreamingServer[chat_db.ReadMostRecentResponse]) error {
 
 	messages, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*[]*chat_db.ReadMostRecentResponse, error) {
-		scanner := s.Query("select userId, offset, channelId, time_posted, content from posts_db.messages where channelId = ? limit ?",
-			request.ChannelId, DEFAULT_LOAD_BATCH_SIZE).Iter().Scanner()
+		scanner := s.Query(
+			"select userId, offset, channelId, time_posted, content from posts_db.messages where channelId = ? limit ?",
+			request.ChannelId,
+			DEFAULT_LOAD_BATCH_SIZE).WithContext(context.Background()).Iter().Scanner()
 
 		messages := make([]*chat_db.ReadMostRecentResponse, 0)
 		for scanner.Next() {
@@ -105,6 +113,7 @@ func (s *chatDbServer) ReadMostRecent(request *chat_db.ReadMostRecentRequest, se
 	return nil
 }
 
+// we can introduce batching here too to further decrease db load
 func listenAndWrite(channelId, offset int64, kafkaUrl string, result chan error) {
 	err := consumer.WatchChannel([]string{kafkaUrl}, channelId, offset, func(e events.Event, m consumer.Metadata) error {
 		v := updateDataVisitor{metadata: m}
@@ -131,7 +140,7 @@ func main() {
 	lastOffset, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*int64, error) {
 		var lastOffset int64 = sarama.OffsetNewest
 		err := s.Query("select max(offset) from posts_db.messages where channelid = ?",
-			211).Consistency(gocql.One).Scan(&lastOffset)
+			211).WithContext(context.Background()).Consistency(gocql.One).Scan(&lastOffset)
 		return &lastOffset, err
 	})
 	if err != nil {
