@@ -114,6 +114,7 @@ type NewMessageEvent struct {
 	Conent        string                 `protobuf:"bytes,1,opt,name=conent,proto3" json:"conent,omitempty"`
 	UserId        int64                  `protobuf:"varint,2,opt,name=userId,proto3" json:"userId,omitempty"`
 	ChannelId     int64                  `protobuf:"varint,3,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	Offset        int64                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -165,6 +166,13 @@ func (x *NewMessageEvent) GetUserId() int64 {
 func (x *NewMessageEvent) GetChannelId() int64 {
 	if x != nil {
 		return x.ChannelId
+	}
+	return 0
+}
+
+func (x *NewMessageEvent) GetOffset() int64 {
+	if x != nil {
+		return x.Offset
 	}
 	return 0
 }
@@ -319,11 +327,12 @@ const file_chat_watcher_chat_watcher_proto_rawDesc = "" +
 	"\x14WatchChannelResponse\x120\n" +
 	"\x05event\x18\x01 \x01(\v2\x1a.chat_watcher.ChannelEventR\x05event\"3\n" +
 	"\x13WatchChannelRequest\x12\x1c\n" +
-	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\"_\n" +
+	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\"w\n" +
 	"\x0fNewMessageEvent\x12\x16\n" +
 	"\x06conent\x18\x01 \x01(\tR\x06conent\x12\x16\n" +
 	"\x06userId\x18\x02 \x01(\x03R\x06userId\x12\x1c\n" +
-	"\tchannelId\x18\x03 \x01(\x03R\tchannelId\"0\n" +
+	"\tchannelId\x18\x03 \x01(\x03R\tchannelId\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x03R\x06offset\"0\n" +
 	"\fUnknownEvent\x12 \n" +
 	"\vdescription\x18\x01 \x01(\tR\vdescription\"\xe7\x01\n" +
 	"\fChannelEvent\x12?\n" +

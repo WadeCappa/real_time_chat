@@ -20,6 +20,7 @@ message NewMessageEvent {
     string conent = 1;
     int64 userId = 2;
     int64 channelId = 3;
+    int64 offset = 4;
 }
 
 message UnknownEvent {

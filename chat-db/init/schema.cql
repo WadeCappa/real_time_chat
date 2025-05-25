@@ -9,4 +9,4 @@ create table if not exists posts_db.messages (
     content text,
 
     primary key(channelId, offset)
-);
+)  with clustering order by (offset desc);

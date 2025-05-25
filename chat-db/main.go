@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -20,7 +21,7 @@ const (
 	DEFAULT_KAFKA_HOSTNAME     = "localhost:9092"
 	DEFAULT_CASSANDRA_HOSTNAME = "localhost:9042"
 	DEFAULT_PORT               = 50054
-	DEFAULT_LOAD_BATCH_SIZE    = 100
+	DEFAULT_LOAD_BATCH_SIZE    = 3
 	TESTING_CHANNEL_ID         = 211
 )
 
@@ -62,36 +63,46 @@ func (v *updateDataVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEven
 
 func (s *chatDbServer) ReadMostRecent(request *chat_db.ReadMostRecentRequest, server grpc.ServerStreamingServer[chat_db.ReadMostRecentResponse]) error {
 
-	_, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*bool, error) {
+	messages, err := store.Call(*cassandraHostname, func(s *gocql.Session) (*[]*chat_db.ReadMostRecentResponse, error) {
 		scanner := s.Query("select userId, offset, channelId, time_posted, content from posts_db.messages where channelId = ? limit ?",
 			request.ChannelId, DEFAULT_LOAD_BATCH_SIZE).Iter().Scanner()
 
+		messages := make([]*chat_db.ReadMostRecentResponse, 0)
 		for scanner.Next() {
 			var message message
 			err := scanner.Scan(&message.userId, &message.offset, &message.channelId, &message.time_posted, &message.content)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run scanner %v", err)
 			}
-			err = server.Send(&chat_db.ReadMostRecentResponse{
+			messages = append(messages, &chat_db.ReadMostRecentResponse{
 				Message:            message.content,
 				UserId:             message.userId,
 				ChannelId:          message.channelId,
 				Offset:             message.offset,
 				TimePostedUnixTime: message.time_posted.Unix(),
 			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to send message %v", err)
-			}
 		}
 		// scanner.Err() closes the iterator, so scanner nor iter should be used afterwards.
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("some error happened while reading from db %v", err)
 		}
 
-		return nil, nil
+		slices.Reverse(messages)
+		return &messages, nil
 	})
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to load messages %v", err)
+	}
+
+	for _, message := range *messages {
+		err = server.Send(message)
+		if err != nil {
+			return fmt.Errorf("failed to send message %v", err)
+		}
+	}
+
+	return nil
 }
 
 func listenAndWrite(channelId, offset int64, kafkaUrl string, result chan error) {

@@ -107,9 +107,6 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("failed to get recent messages from db: %v", err)
-	}
 
 	log.Printf("watching from offset %d\n", *offset)
 	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, *offset, func(e events.Event, m consumer.Metadata) error {
