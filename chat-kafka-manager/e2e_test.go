@@ -6,6 +6,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/IBM/sarama"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/constants"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/consumer"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/events"
@@ -24,7 +25,7 @@ func TestPublishAndReadMessage(t *testing.T) {
 	done := make(chan bool)
 	const channelId int64 = 12
 	go func() {
-		err := consumer.WatchChannel(urls, channelId, func(e events.Event, m consumer.Metadata) error {
+		err := consumer.WatchChannel(urls, channelId, sarama.OffsetNewest, func(e events.Event, m consumer.Metadata) error {
 			name, err := events.GetName(e)
 			if err != nil || name == nil {
 				t.Errorf("failed to get name %v", err)

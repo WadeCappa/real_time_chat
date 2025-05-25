@@ -62,7 +62,7 @@ func getMetadata(m *sarama.ConsumerMessage) (Metadata, error) {
 	}, nil
 }
 
-func WatchChannel(brokersUrl []string, channelId int64, eventConsumer func(events.Event, Metadata) error) error {
+func WatchChannel(brokersUrl []string, channelId, offset int64, eventConsumer func(events.Event, Metadata) error) error {
 	subscriber, err := getSubscriber(brokersUrl)
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func WatchChannel(brokersUrl []string, channelId int64, eventConsumer func(event
 	defer subscriber.Close()
 
 	// We assume only one partition per channel since we'll be DB constrained anyway.
-	consumer, err := subscriber.ConsumePartition(constants.GetChannelTopic(channelId), 0, sarama.OffsetNewest)
+	consumer, err := subscriber.ConsumePartition(constants.GetChannelTopic(channelId), 0, offset)
 	if err != nil {
 		return err
 	}
