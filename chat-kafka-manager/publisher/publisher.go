@@ -47,7 +47,7 @@ func PublishEvent(consumer func([]byte) error, event events.Event) error {
 	return consumer(data)
 }
 
-func PublishChatMessageToChannel(brokersUrl []string, userId int64, message string, channelId int64) error {
+func writeToTopic(brokersUrl []string, userId int64, message string, channelId int64, topic string) error {
 	newMessage := events.NewChatMessageEvent{
 		Content:   message,
 		ChannelId: channelId,
@@ -58,8 +58,6 @@ func PublishChatMessageToChannel(brokersUrl []string, userId int64, message stri
 	if err != nil {
 		return err
 	}
-
-	topic := constants.GetChannelTopic(channelId)
 
 	// kafka specific
 	consumer := func(data []byte) error {
@@ -89,4 +87,14 @@ func PublishChatMessageToChannel(brokersUrl []string, userId int64, message stri
 	}
 
 	return PublishEvent(consumer, newMessage)
+}
+
+func WriteMessageEvent(brokersUrl []string, userId int64, message string, channelId int64) error {
+	topic := constants.GetAllMessagesTopic()
+	return writeToTopic(brokersUrl, userId, message, channelId, topic)
+}
+
+func PublishChatMessageToChannel(brokersUrl []string, userId int64, message string, channelId int64) error {
+	topic := constants.GetChannelTopic(channelId)
+	return writeToTopic(brokersUrl, userId, message, channelId, topic)
 }
