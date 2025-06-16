@@ -126,8 +126,15 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 		return fmt.Errorf("failed to get last offset: %v", err)
 	}
 
-	log.Printf("watching from offset %d\n", *offset)
-	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, *offset-1, func(e events.Event, m consumer.Metadata) error {
+	// Right now, this has a race condition where if a message is published in between someone starts listening,
+	// loads the previous ealiest messages, then starts reading, we'll missed that message that was just posted.
+	// We can fix this if we pass the message_id in a new event type (now we'll have pre-store and post-store types
+	// which is just a good idea anyway for encapsulation purposes), so that the new control flow is start listening
+	// to the newest message which will tell us its message_id, then we'll load everything (within a limit) before that
+	// message from the db, then we'll resume listening from that first message. This way we don't miss any
+	// information.
+	log.Printf("read up to offset %d\n", *offset)
+	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, sarama.OffsetNewest, func(e events.Event, m consumer.Metadata) error {
 		log.Println(e)
 		v := createChannelEventVisitor{}
 		v.e = chat_watcher.ChannelEvent{
