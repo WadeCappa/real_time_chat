@@ -11,7 +11,8 @@ require (
 require (
 	github.com/IBM/sarama v1.45.1 // indirect
 	github.com/WadeCappa/authmaster v0.0.1 // indirect
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525161932-a9cabdb73441 // indirect
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525172518-67aa5a398d28 // indirect
+	github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250616174114-37f77fb6fd82 // indirect
 	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525161932-a9cabdb73441 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect

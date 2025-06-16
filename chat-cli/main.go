@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/WadeCappa/real_time_chat/channel-manager/external_channel_manager"
 	"github.com/WadeCappa/real_time_chat/chat-watcher/chat_watcher"
 	"github.com/WadeCappa/real_time_chat/chat-writer/chat_writer"
 	"google.golang.org/grpc"
@@ -14,25 +15,29 @@ import (
 )
 
 const (
-	NO_COMMAND               = "no-command"
-	DEFAULT_WRITE_SERVER_URL = "localhost:50052"
-	DEFAULT_WATCH_SERVER_URL = "localhost:50053"
+	NO_COMMAND                       = "no-command"
+	DEFAULT_WRITE_SERVER_URL         = "localhost:50052"
+	DEFAULT_WATCH_SERVER_URL         = "localhost:50053"
+	DEFAULT_CHANNEL_MANAGER_HOSTNAME = "localhost:50055"
 
 	NO_TOKEN           = ""
 	DEFAULT_CHANNEL_ID = 211
 
-	POST_COMMAND  = "post"
-	WATCH_COMMAND = "watch"
+	POST_COMMAND         = "post"
+	WATCH_COMMAND        = "watch"
+	GET_CHANNELS_COMMAND = "get-channels"
 )
 
 var commands = map[string]func() error{
-	POST_COMMAND:  post,
-	WATCH_COMMAND: watch,
+	POST_COMMAND:         post,
+	WATCH_COMMAND:        watch,
+	GET_CHANNELS_COMMAND: getChannels,
 }
 
 var (
-	writeServerAddress = flag.String("write-server-url", DEFAULT_WRITE_SERVER_URL, "the address for a write server to communicate with")
-	watchServerAddress = flag.String("watch-server-url", DEFAULT_WATCH_SERVER_URL, "the address for a watch server to communicate with")
+	writeServerAddress     = flag.String("write-server-url", DEFAULT_WRITE_SERVER_URL, "the address for a write server to communicate with")
+	watchServerAddress     = flag.String("watch-server-url", DEFAULT_WATCH_SERVER_URL, "the address for a watch server to communicate with")
+	channelManagerHostname = flag.String("channel-manager-hostname", DEFAULT_CHANNEL_MANAGER_HOSTNAME, "the address for the channel manager server")
 
 	cmd       = flag.String("cmd", NO_COMMAND, "choose one of the following; ")
 	userToken = flag.String("token", NO_TOKEN, "the user token to perform an operation with")
@@ -69,6 +74,29 @@ func post() error {
 		log.Printf("%v\n", response)
 
 		return nil
+	})
+}
+
+func getChannels() error {
+	return withConnection(*channelManagerHostname, func(cc *grpc.ClientConn) error {
+		newMetadata := metadata.Pairs("Authorization", *userToken)
+		newContext := metadata.NewOutgoingContext(context.Background(), newMetadata)
+
+		c := external_channel_manager.NewExternalchannelmanagerClient(cc)
+		response, err := c.GetAllChannels(newContext, &external_channel_manager.GetAllChannelsRequest{})
+
+		if err != nil {
+			return fmt.Errorf("failed to send message: %v", err)
+		}
+
+		for {
+			e, err := response.Recv()
+			if err != nil {
+				return fmt.Errorf("failed to get next channel: %v", err)
+			}
+
+			log.Println(e)
+		}
 	})
 }
 

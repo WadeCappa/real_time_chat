@@ -27,7 +27,7 @@ const (
 
 var (
 	kafkaHostname           = flag.String("kafka-hostname", DEFAULT_KAFKA_HOSTNAME, "the hostname for kafka")
-	postgresUrl             = flag.String("postgres-hostname", DEFAULT_POSTGRES_URL, "the hostname for kafka")
+	postgresUrl             = flag.String("postgres-hostname", DEFAULT_POSTGRES_URL, "the hostname for postgres")
 	channelManangerHostname = flag.String("channel-manager-hostname", DEFAULT_CHANNEL_MANAGER_HOSTNAME, "the hostname for the channel manager")
 	port                    = flag.Int("port", DEFAULT_PORT, "port for this service")
 )

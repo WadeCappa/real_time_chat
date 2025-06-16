@@ -8,18 +8,19 @@ import (
 	"github.com/WadeCappa/real_time_chat/chat-db/store"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/consumer"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/events"
+	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/publisher"
 	"github.com/jackc/pgx/v5"
 )
 
 type updateDataVisitor struct {
 	events.EventVisitor
 
-	metadata         consumer.Metadata
-	postgresHostname string
+	metadata consumer.Metadata
+	syncer   *Syncer
 }
 
 func (v *updateDataVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEvent) error {
-	res := store.Call(v.postgresHostname, func(c *pgx.Conn) result.Result[any] {
+	res := store.Call(v.syncer.PostgresUrl, func(c *pgx.Conn) result.Result[any] {
 		tag, err := c.Exec(context.Background(),
 			"insert into messages (user_id, message_id, channel_id, time_posted, content) values ($1, $2, $3, $4, $5)",
 			e.UserId,
@@ -31,6 +32,12 @@ func (v *updateDataVisitor) VisitNewChatMessageEvent(e events.NewChatMessageEven
 			return result.Failed[any](fmt.Errorf("failed to create new message: %v", err))
 		}
 		fmt.Printf("tag from new channel request, %s\n", tag)
+
+		err = publisher.PublishChatMessageToChannel([]string{v.syncer.KafkaHostname}, e.UserId, e.Content, e.ChannelId)
+		if err != nil {
+			return result.Failed[any](err)
+		}
+
 		return result.Result[any]{Result: nil, Err: nil}
 	})
 	if res.Err != nil {

@@ -122,8 +122,12 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 		return nil
 	})
 
+	if err != nil {
+		return fmt.Errorf("failed to get last offset: %v", err)
+	}
+
 	log.Printf("watching from offset %d\n", *offset)
-	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, *offset, func(e events.Event, m consumer.Metadata) error {
+	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, *offset-1, func(e events.Event, m consumer.Metadata) error {
 		log.Println(e)
 		v := createChannelEventVisitor{}
 		v.e = chat_watcher.ChannelEvent{
