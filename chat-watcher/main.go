@@ -111,7 +111,7 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 				Conent:    rmrr.Message,
 				UserId:    rmrr.UserId,
 				ChannelId: rmrr.ChannelId,
-				Offset:    rmrr.Offset}}}
+				MessageId: rmrr.Offset}}}
 
 		log.Println(&e)
 		err = server.Send(&chat_watcher.WatchChannelResponse{Event: &e})

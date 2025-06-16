@@ -27,7 +27,7 @@ type ReadMostRecentResponse struct {
 	Message            string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	UserId             int64                  `protobuf:"varint,3,opt,name=userId,proto3" json:"userId,omitempty"`
 	TimePostedUnixTime int64                  `protobuf:"varint,4,opt,name=timePostedUnixTime,proto3" json:"timePostedUnixTime,omitempty"`
-	Offset             int64                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	MessageId          int64                  `protobuf:"varint,5,opt,name=messageId,proto3" json:"messageId,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -90,9 +90,9 @@ func (x *ReadMostRecentResponse) GetTimePostedUnixTime() int64 {
 	return 0
 }
 
-func (x *ReadMostRecentResponse) GetOffset() int64 {
+func (x *ReadMostRecentResponse) GetMessageId() int64 {
 	if x != nil {
-		return x.Offset
+		return x.MessageId
 	}
 	return 0
 }
@@ -145,13 +145,13 @@ var File_chat_db_chat_db_proto protoreflect.FileDescriptor
 
 const file_chat_db_chat_db_proto_rawDesc = "" +
 	"\n" +
-	"\x15chat_db/chat-db.proto\x12\achat_db\"\xb0\x01\n" +
+	"\x15chat_db/chat-db.proto\x12\achat_db\"\xb6\x01\n" +
 	"\x16ReadMostRecentResponse\x12\x1c\n" +
 	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x16\n" +
 	"\x06userId\x18\x03 \x01(\x03R\x06userId\x12.\n" +
-	"\x12timePostedUnixTime\x18\x04 \x01(\x03R\x12timePostedUnixTime\x12\x16\n" +
-	"\x06offset\x18\x05 \x01(\x03R\x06offset\"5\n" +
+	"\x12timePostedUnixTime\x18\x04 \x01(\x03R\x12timePostedUnixTime\x12\x1c\n" +
+	"\tmessageId\x18\x05 \x01(\x03R\tmessageId\"5\n" +
 	"\x15ReadMostRecentRequest\x12\x1c\n" +
 	"\tchannelId\x18\x01 \x01(\x03R\tchannelId2_\n" +
 	"\x06chatdb\x12U\n" +

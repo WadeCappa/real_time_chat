@@ -43,7 +43,7 @@ func (s *chatWriterServer) PublishMessage(ctx context.Context, request *chat_wri
 
 	log.Printf("looking at userid of %d\n", *userId)
 
-	if err := publisher.PublishChatMessageToChannel([]string{*kafkaHostname}, *userId, request.Message, request.ChannelId); err != nil {
+	if err := publisher.WriteMessageEvent([]string{*kafkaHostname}, *userId, request.Message, request.ChannelId); err != nil {
 		return nil, err
 	}
 

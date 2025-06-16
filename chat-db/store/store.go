@@ -1,32 +1,18 @@
 package store
 
 import (
-	"fmt"
+	"context"
 
-	"github.com/gocql/gocql"
+	"github.com/WadeCappa/real_time_chat/chat-db/result"
+	"github.com/jackc/pgx/v5"
 )
 
-func Call[T any](dbUrl string, query func(*gocql.Session) (*T, error)) (*T, error) {
-	cluster := gocql.NewCluster(dbUrl)
-
-	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: "cassandra",
-		Password: "cassandra",
-	}
-
-	cluster.Keyspace = "posts_db"
-	cluster.Consistency = gocql.Quorum
-	cluster.ProtoVersion = 4
-
+func Call[T any](postgresUrl string, query func(*pgx.Conn) result.Result[T]) result.Result[T] {
 	// this is probably insecure. Will want to change how we access this in the future
-	session, err := cluster.CreateSession()
+	conn, err := pgx.Connect(context.Background(), postgresUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %v", err)
+		return result.Failed[T](err)
 	}
-	if session == nil {
-		return nil, fmt.Errorf("failed to create session, but had no error")
-	}
-	defer session.Close()
-
-	return query(session)
+	defer conn.Close(context.Background())
+	return query(conn)
 }
