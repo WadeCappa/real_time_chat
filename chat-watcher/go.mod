@@ -3,8 +3,8 @@ module github.com/WadeCappa/real_time_chat/chat-watcher
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525171252-8987816d4479
-	github.com/WadeCappa/real_time_chat/chat-db v0.0.0-20250525171252-8987816d4479
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250616203213-549210e853cf
+	github.com/WadeCappa/real_time_chat/chat-db v0.0.0-20250616203213-549210e853cf
 )
 
 require (
@@ -12,15 +12,10 @@ require (
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/gocql/gocql v1.7.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.5 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/gofork v1.7.6 // indirect
@@ -29,18 +24,17 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
-	gopkg.in/inf.v0 v0.9.1 // indirect
 )
 
 require (
-	github.com/IBM/sarama v1.45.1
+	github.com/IBM/sarama v1.45.2
 	github.com/WadeCappa/authmaster v0.0.1 // indirect
-	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250525171252-8987816d4479
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
+	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250616203213-549210e853cf
+	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
-	google.golang.org/grpc v1.72.1
+	golang.org/x/text v0.26.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
+	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )

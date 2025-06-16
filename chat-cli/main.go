@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/WadeCappa/real_time_chat/channel-manager/external_channel_manager"
+	"github.com/WadeCappa/real_time_chat/chat-db/chat_db"
 	"github.com/WadeCappa/real_time_chat/chat-watcher/chat_watcher"
-	"github.com/WadeCappa/real_time_chat/chat-writer/chat_writer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -64,8 +64,8 @@ func post() error {
 		newMetadata := metadata.Pairs("Authorization", *userToken)
 		newContext := metadata.NewOutgoingContext(context.Background(), newMetadata)
 
-		c := chat_writer.NewChatwriterserverClient(cc)
-		response, err := c.PublishMessage(newContext, &chat_writer.PublishMessageRequest{ChannelId: *channelId, Message: message})
+		c := chat_db.NewChatdbClient(cc)
+		response, err := c.PublishMessage(newContext, &chat_db.PublishMessageRequest{ChannelId: *channelId, Message: message})
 
 		if err != nil {
 			return fmt.Errorf("failed to send message: %v", err)

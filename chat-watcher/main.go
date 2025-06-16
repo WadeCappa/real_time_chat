@@ -22,7 +22,7 @@ import (
 const (
 	DEFAULT_KAFKA_HOSTNAME   = "localhost:9092"
 	DEFAULT_AUTH_HOSTNAME    = "localhost:50051"
-	DEFAULT_CHAT_DB_HOSTNAME = "localhost:50054"
+	DEFAULT_CHAT_DB_HOSTNAME = "localhost:50052"
 	DEFAULT_PORT             = 50053
 )
 
@@ -88,7 +88,7 @@ func getRecentMessages(channelId int64, consumer func(*chat_db.ReadMostRecentRes
 			return nil, fmt.Errorf("failed to consume event: %v", err)
 		}
 
-		offset = e.Offset
+		offset = e.MessageId
 	}
 }
 
@@ -111,7 +111,7 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 				Conent:    rmrr.Message,
 				UserId:    rmrr.UserId,
 				ChannelId: rmrr.ChannelId,
-				MessageId: rmrr.Offset}}}
+				MessageId: rmrr.MessageId}}}
 
 		log.Println(&e)
 		err = server.Send(&chat_watcher.WatchChannelResponse{Event: &e})

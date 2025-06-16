@@ -23,7 +23,7 @@ const (
 	DEFAULT_AUTH_HOSTNAME            = "localhost:50051"
 	DEFAULT_POSTGRES_URL             = "postgres://postgres:pass@localhost:5432/chat_db"
 	DEFAULT_CHANNEL_MANAGER_HOSTNAME = "localhost:50055"
-	DEFAULT_PORT                     = 50054
+	DEFAULT_PORT                     = 50052
 	DEFAULT_LOAD_BATCH_SIZE          = 3
 )
 
@@ -64,11 +64,11 @@ func (s *chatDbServer) PublishMessage(
 
 	offset, err := publisher.PublishChatMessageToChannel(
 		[]string{*kafkaHostname},
-		userId,
+		*userId,
 		request.Message,
 		request.ChannelId)
 	if err != nil {
-		return nil, result.Failed[any](fmt.Errorf("failed to write to kafka: %v", err))
+		return nil, fmt.Errorf("failed to write to kafka: %v", err)
 	}
 
 	res := store.Call(*postgresUrl, func(c *pgx.Conn) result.Result[any] {
@@ -87,7 +87,7 @@ func (s *chatDbServer) PublishMessage(
 		return result.Result[any]{Result: nil, Err: nil}
 	})
 	if res.Err != nil {
-		return nil, fmt.Errorf("failed to store new chat message event: %v", res.Err)
+		return nil, fmt.Errorf("failed to store new chat message event even after writing to kafka. This means we have lost a chat message: %v", res.Err)
 	}
 
 	return &chat_db.PublishMessageResponse{}, nil
