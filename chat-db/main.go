@@ -9,16 +9,18 @@ import (
 	"slices"
 	"time"
 
+	"github.com/WadeCappa/real_time_chat/auth"
 	"github.com/WadeCappa/real_time_chat/chat-db/chat_db"
 	"github.com/WadeCappa/real_time_chat/chat-db/result"
 	"github.com/WadeCappa/real_time_chat/chat-db/store"
-	"github.com/WadeCappa/real_time_chat/chat-db/syncer"
+	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/publisher"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc"
 )
 
 const (
 	DEFAULT_KAFKA_HOSTNAME           = "localhost:9092"
+	DEFAULT_AUTH_HOSTNAME            = "localhost:50051"
 	DEFAULT_POSTGRES_URL             = "postgres://postgres:pass@localhost:5432/chat_db"
 	DEFAULT_CHANNEL_MANAGER_HOSTNAME = "localhost:50055"
 	DEFAULT_PORT                     = 50054
@@ -26,6 +28,7 @@ const (
 )
 
 var (
+	authHostname            = flag.String("auth-hostname", DEFAULT_AUTH_HOSTNAME, "the hostname for the auth service")
 	kafkaHostname           = flag.String("kafka-hostname", DEFAULT_KAFKA_HOSTNAME, "the hostname for kafka")
 	postgresUrl             = flag.String("postgres-hostname", DEFAULT_POSTGRES_URL, "the hostname for postgres")
 	channelManangerHostname = flag.String("channel-manager-hostname", DEFAULT_CHANNEL_MANAGER_HOSTNAME, "the hostname for the channel manager")
@@ -42,6 +45,52 @@ type message struct {
 	messageId   int64
 	time_posted time.Time
 	content     string
+}
+
+func (s *chatDbServer) PublishMessage(
+	ctx context.Context,
+	request *chat_db.PublishMessageRequest) (*chat_db.PublishMessageResponse, error) {
+	userId, err := auth.AuthenticateUser(ctx, *authHostname)
+	if err != nil {
+		return nil, err
+	}
+
+	if userId == nil {
+		log.Println("did not return a valid user id")
+		return nil, fmt.Errorf("returned an invalid userid")
+	}
+
+	log.Printf("looking at userid of %d\n", *userId)
+
+	offset, err := publisher.PublishChatMessageToChannel(
+		[]string{*kafkaHostname},
+		userId,
+		request.Message,
+		request.ChannelId)
+	if err != nil {
+		return nil, result.Failed[any](fmt.Errorf("failed to write to kafka: %v", err))
+	}
+
+	res := store.Call(*postgresUrl, func(c *pgx.Conn) result.Result[any] {
+		tag, err := c.Exec(context.Background(),
+			"insert into messages (user_id, message_id, channel_id, time_posted, content) values ($1, $2, $3, $4, $5)",
+			userId,
+			offset,
+			request.ChannelId,
+			time.Now(),
+			request.Message)
+		if err != nil {
+			return result.Failed[any](fmt.Errorf("failed to create new message: %v", err))
+		}
+		fmt.Printf("tag from new channel request, %s\n", tag)
+
+		return result.Result[any]{Result: nil, Err: nil}
+	})
+	if res.Err != nil {
+		return nil, fmt.Errorf("failed to store new chat message event: %v", res.Err)
+	}
+
+	return &chat_db.PublishMessageResponse{}, nil
 }
 
 func (s *chatDbServer) ReadMostRecent(
@@ -109,14 +158,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-
-	syncer := syncer.Syncer{
-		PostgresUrl:            *postgresUrl,
-		KafkaHostname:          *kafkaHostname,
-		ChannelManagerHostname: *channelManangerHostname,
-	}
-
-	go syncer.RunSyncer()
 
 	server := grpc.NewServer()
 	chat_db.RegisterChatdbServer(server, &chatDbServer{})

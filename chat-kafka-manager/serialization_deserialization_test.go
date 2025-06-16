@@ -12,7 +12,7 @@ import (
 
 func TestNewMessage(t *testing.T) {
 	event := events.NewChatMessageEvent{Content: "test-message", UserId: 20, ChannelId: 987}
-	publisher.PublishEvent(func(b []byte) error {
+	publisher.PublishEvent(func(b []byte) (int64, error) {
 		recoveredEvent, err := consumer.GetEvent(b)
 		if err != nil {
 			t.Errorf("failed to get event")
@@ -31,7 +31,7 @@ func TestNewMessage(t *testing.T) {
 		if event != recoveredEvent {
 			t.Errorf("Some data was different")
 		}
-		return nil
+		return 0, nil
 	}, event)
 }
 

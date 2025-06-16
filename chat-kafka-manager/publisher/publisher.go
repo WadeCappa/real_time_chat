@@ -38,16 +38,16 @@ func getPublisher(brokersUrl []string) (sarama.SyncProducer, error) {
 }
 
 // visible for testing
-func PublishEvent(consumer func([]byte) error, event events.Event) error {
+func PublishEvent(consumer func([]byte) (int64, error), event events.Event) (int64, error) {
 	data, err := createMessage(event)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	return consumer(data)
 }
 
-func writeToTopic(brokersUrl []string, userId int64, message string, channelId int64, topic string) error {
+func writeToTopic(brokersUrl []string, userId int64, message string, channelId int64, topic string) (int64, error) {
 	newMessage := events.NewChatMessageEvent{
 		Content:   message,
 		ChannelId: channelId,
@@ -56,11 +56,11 @@ func writeToTopic(brokersUrl []string, userId int64, message string, channelId i
 
 	pub, err := getPublisher(brokersUrl)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// kafka specific
-	consumer := func(data []byte) error {
+	consumer := func(data []byte) (int64, error) {
 		kafkaEvent := &sarama.ProducerMessage{
 			Topic: topic,
 			Value: sarama.StringEncoder(data),
@@ -68,7 +68,7 @@ func writeToTopic(brokersUrl []string, userId int64, message string, channelId i
 
 		partition, offset, err := pub.SendMessage(kafkaEvent)
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		logMessage, err := json.Marshal(map[string]interface{}{
@@ -83,18 +83,18 @@ func writeToTopic(brokersUrl []string, userId int64, message string, channelId i
 			log.Printf("Failed to log success! %v", err)
 		}
 
-		return nil
+		return offset, nil
 	}
 
 	return PublishEvent(consumer, newMessage)
 }
 
-func WriteMessageEvent(brokersUrl []string, userId int64, message string, channelId int64) error {
+func WriteMessageEvent(brokersUrl []string, userId int64, message string, channelId int64) (int64, error) {
 	topic := constants.GetAllMessagesTopic()
 	return writeToTopic(brokersUrl, userId, message, channelId, topic)
 }
 
-func PublishChatMessageToChannel(brokersUrl []string, userId int64, message string, channelId int64) error {
+func PublishChatMessageToChannel(brokersUrl []string, userId int64, message string, channelId int64) (int64, error) {
 	topic := constants.GetChannelTopic(channelId)
 	return writeToTopic(brokersUrl, userId, message, channelId, topic)
 }

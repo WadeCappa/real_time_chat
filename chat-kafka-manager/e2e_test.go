@@ -14,7 +14,7 @@ import (
 )
 
 func TestPublishWithoutError(t *testing.T) {
-	err := publisher.PublishChatMessageToChannel([]string{"localhost:9092"}, 0, "test message", 0)
+	_, err := publisher.PublishChatMessageToChannel([]string{"localhost:9092"}, 0, "test message", 0)
 	if err != nil {
 		t.Errorf("Failed to publish message %v", err)
 	}
@@ -42,7 +42,7 @@ func TestPublishAndReadMessage(t *testing.T) {
 			t.Errorf("Failed to consumer from stream %v", err)
 		}
 	}()
-	err := publisher.PublishChatMessageToChannel(urls, 0, "test message", channelId)
+	_, err := publisher.PublishChatMessageToChannel(urls, 0, "test message", channelId)
 	if err != nil {
 		t.Errorf("Failed to publish message %v", err)
 	}

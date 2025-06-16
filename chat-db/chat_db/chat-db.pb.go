@@ -141,6 +141,94 @@ func (x *ReadMostRecentRequest) GetChannelId() int64 {
 	return 0
 }
 
+type PublishMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishMessageResponse) Reset() {
+	*x = PublishMessageResponse{}
+	mi := &file_chat_db_chat_db_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishMessageResponse) ProtoMessage() {}
+
+func (x *PublishMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_db_chat_db_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishMessageResponse.ProtoReflect.Descriptor instead.
+func (*PublishMessageResponse) Descriptor() ([]byte, []int) {
+	return file_chat_db_chat_db_proto_rawDescGZIP(), []int{2}
+}
+
+type PublishMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId     int64                  `protobuf:"varint,1,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishMessageRequest) Reset() {
+	*x = PublishMessageRequest{}
+	mi := &file_chat_db_chat_db_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishMessageRequest) ProtoMessage() {}
+
+func (x *PublishMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_db_chat_db_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishMessageRequest.ProtoReflect.Descriptor instead.
+func (*PublishMessageRequest) Descriptor() ([]byte, []int) {
+	return file_chat_db_chat_db_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PublishMessageRequest) GetChannelId() int64 {
+	if x != nil {
+		return x.ChannelId
+	}
+	return 0
+}
+
+func (x *PublishMessageRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_chat_db_chat_db_proto protoreflect.FileDescriptor
 
 const file_chat_db_chat_db_proto_rawDesc = "" +
@@ -153,9 +241,14 @@ const file_chat_db_chat_db_proto_rawDesc = "" +
 	"\x12timePostedUnixTime\x18\x04 \x01(\x03R\x12timePostedUnixTime\x12\x1c\n" +
 	"\tmessageId\x18\x05 \x01(\x03R\tmessageId\"5\n" +
 	"\x15ReadMostRecentRequest\x12\x1c\n" +
-	"\tchannelId\x18\x01 \x01(\x03R\tchannelId2_\n" +
+	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\"\x18\n" +
+	"\x16PublishMessageResponse\"O\n" +
+	"\x15PublishMessageRequest\x12\x1c\n" +
+	"\tchannelId\x18\x01 \x01(\x03R\tchannelId\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xb4\x01\n" +
 	"\x06chatdb\x12U\n" +
-	"\x0eReadMostRecent\x12\x1e.chat_db.ReadMostRecentRequest\x1a\x1f.chat_db.ReadMostRecentResponse\"\x000\x01B5Z3github.com/WadeCappa/real_time_chat/chat-db/chat-dbb\x06proto3"
+	"\x0eReadMostRecent\x12\x1e.chat_db.ReadMostRecentRequest\x1a\x1f.chat_db.ReadMostRecentResponse\"\x000\x01\x12S\n" +
+	"\x0ePublishMessage\x12\x1e.chat_db.PublishMessageRequest\x1a\x1f.chat_db.PublishMessageResponse\"\x00B5Z3github.com/WadeCappa/real_time_chat/chat-db/chat-dbb\x06proto3"
 
 var (
 	file_chat_db_chat_db_proto_rawDescOnce sync.Once
@@ -169,16 +262,20 @@ func file_chat_db_chat_db_proto_rawDescGZIP() []byte {
 	return file_chat_db_chat_db_proto_rawDescData
 }
 
-var file_chat_db_chat_db_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_chat_db_chat_db_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_chat_db_chat_db_proto_goTypes = []any{
 	(*ReadMostRecentResponse)(nil), // 0: chat_db.ReadMostRecentResponse
 	(*ReadMostRecentRequest)(nil),  // 1: chat_db.ReadMostRecentRequest
+	(*PublishMessageResponse)(nil), // 2: chat_db.PublishMessageResponse
+	(*PublishMessageRequest)(nil),  // 3: chat_db.PublishMessageRequest
 }
 var file_chat_db_chat_db_proto_depIdxs = []int32{
 	1, // 0: chat_db.chatdb.ReadMostRecent:input_type -> chat_db.ReadMostRecentRequest
-	0, // 1: chat_db.chatdb.ReadMostRecent:output_type -> chat_db.ReadMostRecentResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	3, // 1: chat_db.chatdb.PublishMessage:input_type -> chat_db.PublishMessageRequest
+	0, // 2: chat_db.chatdb.ReadMostRecent:output_type -> chat_db.ReadMostRecentResponse
+	2, // 3: chat_db.chatdb.PublishMessage:output_type -> chat_db.PublishMessageResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -195,7 +292,7 @@ func file_chat_db_chat_db_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chat_db_chat_db_proto_rawDesc), len(file_chat_db_chat_db_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

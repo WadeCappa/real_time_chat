@@ -5,6 +5,7 @@ package chat_db;
 
 service chatdb {
   rpc ReadMostRecent (ReadMostRecentRequest) returns (stream ReadMostRecentResponse) {}
+  rpc PublishMessage (PublishMessageRequest) returns (PublishMessageResponse) {}
 }
 
 message ReadMostRecentResponse {
@@ -17,4 +18,11 @@ message ReadMostRecentResponse {
 
 message ReadMostRecentRequest {
   int64 channelId = 1;
+}
+
+message PublishMessageResponse {}
+
+message PublishMessageRequest {
+  int64 channelId = 1;
+  string message = 2;
 }

@@ -30,7 +30,6 @@ type chatWriterServer struct {
 }
 
 func (s *chatWriterServer) PublishMessage(ctx context.Context, request *chat_writer.PublishMessageRequest) (*chat_writer.PublishMessageResponse, error) {
-
 	userId, err := auth.AuthenticateUser(ctx, *authHostname)
 	if err != nil {
 		return nil, err
@@ -43,8 +42,9 @@ func (s *chatWriterServer) PublishMessage(ctx context.Context, request *chat_wri
 
 	log.Printf("looking at userid of %d\n", *userId)
 
-	if err := publisher.WriteMessageEvent([]string{*kafkaHostname}, *userId, request.Message, request.ChannelId); err != nil {
-		return nil, err
+	offset, err := publisher.PublishChatMessageToChannel([]string{*kafkaHostname}, *userId, request.Message, request.ChannelId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write to kafka: %v", err)
 	}
 
 	return &chat_writer.PublishMessageResponse{}, nil

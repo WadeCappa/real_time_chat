@@ -1,5 +1,9 @@
 github.com/IBM/sarama v1.45.2 h1:8m8LcMCu3REcwpa7fCP6v2fuPuzVwXDAM2DOv3CBrKw=
 github.com/IBM/sarama v1.45.2/go.mod h1:ppaoTcVdGv186/z6MEKsMm70A5fwJfRTpstI37kVn3Y=
+github.com/WadeCappa/authmaster v0.0.1 h1:3T3UjRZsLnYmctzNGIdiT6wRz+CI2aE8TeVumfXJR4I=
+github.com/WadeCappa/authmaster v0.0.1/go.mod h1:k/6kPrxm3l49iiBa20NxC4mvdgfBLVRK6lki8Nhz0yM=
+github.com/WadeCappa/real_time_chat/auth v0.0.0-20250616201110-fc01732d3e81 h1:2qZUaYvmutZP8Jl5oBJND6dW3NRMc4BHE/7Q9NqligA=
+github.com/WadeCappa/real_time_chat/auth v0.0.0-20250616201110-fc01732d3e81/go.mod h1:Fv/imBkBEhBf5Efjvb3TlAMffaoJirAu5V3LGnS4sMg=
 github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250616174114-37f77fb6fd82 h1:xMuvXT43R5k1EPZStBSLYzvczkkI7jTVVr60r3qGRe4=
 github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250616174114-37f77fb6fd82/go.mod h1:qTr0gupkui/NOju/ql6UUjXDyAomT/Buxuk6PtvNCDs=
 github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250616174114-37f77fb6fd82 h1:DZuwlq0+MnBPGT5SHcXgYToT5EWn/lnTOMEZ1qgAWBI=

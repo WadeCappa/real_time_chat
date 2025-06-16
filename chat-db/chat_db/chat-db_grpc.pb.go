@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Chatdb_ReadMostRecent_FullMethodName = "/chat_db.chatdb/ReadMostRecent"
+	Chatdb_PublishMessage_FullMethodName = "/chat_db.chatdb/PublishMessage"
 )
 
 // ChatdbClient is the client API for Chatdb service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatdbClient interface {
 	ReadMostRecent(ctx context.Context, in *ReadMostRecentRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ReadMostRecentResponse], error)
+	PublishMessage(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error)
 }
 
 type chatdbClient struct {
@@ -56,11 +58,22 @@ func (c *chatdbClient) ReadMostRecent(ctx context.Context, in *ReadMostRecentReq
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Chatdb_ReadMostRecentClient = grpc.ServerStreamingClient[ReadMostRecentResponse]
 
+func (c *chatdbClient) PublishMessage(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublishMessageResponse)
+	err := c.cc.Invoke(ctx, Chatdb_PublishMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatdbServer is the server API for Chatdb service.
 // All implementations must embed UnimplementedChatdbServer
 // for forward compatibility.
 type ChatdbServer interface {
 	ReadMostRecent(*ReadMostRecentRequest, grpc.ServerStreamingServer[ReadMostRecentResponse]) error
+	PublishMessage(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error)
 	mustEmbedUnimplementedChatdbServer()
 }
 
@@ -73,6 +86,9 @@ type UnimplementedChatdbServer struct{}
 
 func (UnimplementedChatdbServer) ReadMostRecent(*ReadMostRecentRequest, grpc.ServerStreamingServer[ReadMostRecentResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ReadMostRecent not implemented")
+}
+func (UnimplementedChatdbServer) PublishMessage(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PublishMessage not implemented")
 }
 func (UnimplementedChatdbServer) mustEmbedUnimplementedChatdbServer() {}
 func (UnimplementedChatdbServer) testEmbeddedByValue()                {}
@@ -106,13 +122,36 @@ func _Chatdb_ReadMostRecent_Handler(srv interface{}, stream grpc.ServerStream) e
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Chatdb_ReadMostRecentServer = grpc.ServerStreamingServer[ReadMostRecentResponse]
 
+func _Chatdb_PublishMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatdbServer).PublishMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Chatdb_PublishMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatdbServer).PublishMessage(ctx, req.(*PublishMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Chatdb_ServiceDesc is the grpc.ServiceDesc for Chatdb service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Chatdb_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "chat_db.chatdb",
 	HandlerType: (*ChatdbServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "PublishMessage",
+			Handler:    _Chatdb_PublishMessage_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "ReadMostRecent",
