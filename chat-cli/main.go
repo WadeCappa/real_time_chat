@@ -23,15 +23,17 @@ const (
 	NO_TOKEN           = ""
 	DEFAULT_CHANNEL_ID = 0
 
-	POST_COMMAND         = "post"
-	WATCH_COMMAND        = "watch"
-	GET_CHANNELS_COMMAND = "get-channels"
+	POST_COMMAND           = "post"
+	WATCH_COMMAND          = "watch"
+	GET_CHANNELS_COMMAND   = "get-channels"
+	CREATE_CHANNEL_COMMAND = "create-channel"
 )
 
 var commands = map[string]func() error{
-	POST_COMMAND:         post,
-	WATCH_COMMAND:        watch,
-	GET_CHANNELS_COMMAND: getChannels,
+	POST_COMMAND:           post,
+	WATCH_COMMAND:          watch,
+	GET_CHANNELS_COMMAND:   getChannels,
+	CREATE_CHANNEL_COMMAND: createChannel,
 }
 
 var (
@@ -97,6 +99,31 @@ func getChannels() error {
 
 			log.Println(e)
 		}
+	})
+}
+
+func createChannel() error {
+	return withConnection(*channelManagerHostname, func(cc *grpc.ClientConn) error {
+		var name string
+		fmt.Print("Enter channel name: ")
+		fmt.Scanln(&name)
+
+		newMetadata := metadata.Pairs("Authorization", *userToken)
+		newContext := metadata.NewOutgoingContext(context.Background(), newMetadata)
+
+		c := external_channel_manager.NewExternalchannelmanagerClient(cc)
+		response, err := c.CreateChannel(
+			newContext,
+			&external_channel_manager.CreateChannelRequest{
+				Public: true,
+				Name:   name})
+
+		if err != nil {
+			return fmt.Errorf("failed to create channel: %v", err)
+		}
+
+		log.Printf("created channel %d", response.ChannelId)
+		return nil
 	})
 }
 
