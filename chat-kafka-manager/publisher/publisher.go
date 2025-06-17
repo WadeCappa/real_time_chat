@@ -89,11 +89,6 @@ func writeToTopic(brokersUrl []string, userId int64, message string, channelId i
 	return PublishEvent(consumer, newMessage)
 }
 
-func WriteMessageEvent(brokersUrl []string, userId int64, message string, channelId int64) (int64, error) {
-	topic := constants.GetAllMessagesTopic()
-	return writeToTopic(brokersUrl, userId, message, channelId, topic)
-}
-
 func PublishChatMessageToChannel(brokersUrl []string, userId int64, message string, channelId int64) (int64, error) {
 	topic := constants.GetChannelTopic(channelId)
 	return writeToTopic(brokersUrl, userId, message, channelId, topic)

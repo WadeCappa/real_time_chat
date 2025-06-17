@@ -10,12 +10,15 @@ import (
 	"time"
 
 	"github.com/WadeCappa/real_time_chat/auth"
+	"github.com/WadeCappa/real_time_chat/channel-manager/external_channel_manager"
 	"github.com/WadeCappa/real_time_chat/chat-db/chat_db"
 	"github.com/WadeCappa/real_time_chat/chat-db/result"
 	"github.com/WadeCappa/real_time_chat/chat-db/store"
 	"github.com/WadeCappa/real_time_chat/chat-kafka-manager/publisher"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -47,20 +50,40 @@ type message struct {
 	content     string
 }
 
+func canUserWriteToChannel(channelId, userId int64) error {
+	conn, err := grpc.NewClient(*channelManangerHostname, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	newContext := metadata.NewOutgoingContext(context.Background(), metadata.Pairs())
+
+	c := external_channel_manager.NewExternalchannelmanagerClient(conn)
+	_, err = c.CanWrite(
+		newContext,
+		&external_channel_manager.CanWriteRequest{
+			ChannelId: channelId,
+			UserId:    userId})
+	if err != nil {
+		return fmt.Errorf("failed permission check: %v", err)
+	}
+
+	return nil
+}
+
 func (s *chatDbServer) PublishMessage(
 	ctx context.Context,
 	request *chat_db.PublishMessageRequest) (*chat_db.PublishMessageResponse, error) {
 	userId, err := auth.AuthenticateUser(ctx, *authHostname)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to authenticate user: %v", err)
 	}
 
-	if userId == nil {
-		log.Println("did not return a valid user id")
-		return nil, fmt.Errorf("returned an invalid userid")
+	err = canUserWriteToChannel(request.ChannelId, *userId)
+	if err != nil {
+		return nil, fmt.Errorf("user does not have access: %v", err)
 	}
-
-	log.Printf("looking at userid of %d\n", *userId)
 
 	offset, err := publisher.PublishChatMessageToChannel(
 		[]string{*kafkaHostname},

@@ -21,7 +21,7 @@ const (
 	DEFAULT_CHANNEL_MANAGER_HOSTNAME = "localhost:50055"
 
 	NO_TOKEN           = ""
-	DEFAULT_CHANNEL_ID = 211
+	DEFAULT_CHANNEL_ID = 0
 
 	POST_COMMAND         = "post"
 	WATCH_COMMAND        = "watch"
