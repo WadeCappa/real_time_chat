@@ -1,3 +1,6 @@
+create database chat_db;
+
+\c chat_db
 
 create table if not exists messages (
     user_id bigint,

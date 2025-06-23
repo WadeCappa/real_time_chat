@@ -1,3 +1,6 @@
+create database channel_manager_db;
+
+\c channel_manager_db
 
 create table channels (
     id bigint,

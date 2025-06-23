@@ -1,0 +1,3 @@
+FROM postgres:latest
+COPY channel-manager/init/schema.sql /docker-entrypoint-initdb.d/
+COPY chat-db/init/schema.sql /docker-entrypoint-initdb.d/
