@@ -1,13 +1,35 @@
 services:
+  postgres:
+    hostname: postgres 
+    ports:
+      - "5432:5432"
+    image: postgres:latest
+    restart: always
+    user: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    environment:
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_USER=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - 2181:2181
-  kafka:
+    volumes: 
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+  broker:
     image: confluentinc/cp-kafka:latest
+    hostname: broker
     depends_on:
       - zookeeper
     ports:
@@ -16,35 +38,37 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  backend:
-    build: backend 
+    volumes: 
+      - kafka_data:/var/lib/kafka/data
+  channels:
     ports:
-      - "8080:8080"
-    environment:
-      - FRONTEND_URL=http://localhost:3000
-  frontend:
-    build: 
-      context: frontend
-      args:
-        - BACKEND_URL=http://localhost:8080
-    ports:
-      - "3000:3000"
+      - "50055:50055"
+    build:
+      context: channel-manager
+      dockerfile: Dockerfile
     depends_on:
-      - backend
-  caddy:
-    image: caddy:2.8.4-alpine
-    restart: unless-stopped
+      - postgres
+  watcher:
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - $PWD/caddy/Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+      - "50053:50053"
+    build:
+      context: chat-watcher
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+  writer:
+    ports:
+      - "50052:50052"
+    build:
+      context: chat-db
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
 volumes:
-  caddy_data:
-  caddy_config:
+  postgres_data:
+  kafka_data:
+  zookeeper_data:
+  zookeeper_log:

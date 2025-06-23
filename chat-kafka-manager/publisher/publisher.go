@@ -48,23 +48,16 @@ func PublishEvent(consumer func([]byte) (int64, error), event events.Event) (int
 }
 
 func writeToTopic(brokersUrl []string, userId int64, message string, channelId int64, topic string) (int64, error) {
-	newMessage := events.NewChatMessageEvent{
-		Content:   message,
-		ChannelId: channelId,
-		UserId:    userId,
-	}
-
 	pub, err := getPublisher(brokersUrl)
 	if err != nil {
 		return 0, err
 	}
+	defer pub.Close()
 
-	// kafka specific
 	consumer := func(data []byte) (int64, error) {
 		kafkaEvent := &sarama.ProducerMessage{
 			Topic: topic,
-			Value: sarama.StringEncoder(data),
-		}
+			Value: sarama.StringEncoder(data)}
 
 		partition, offset, err := pub.SendMessage(kafkaEvent)
 		if err != nil {
@@ -84,6 +77,12 @@ func writeToTopic(brokersUrl []string, userId int64, message string, channelId i
 		}
 
 		return offset, nil
+	}
+
+	newMessage := events.NewChatMessageEvent{
+		Content:   message,
+		ChannelId: channelId,
+		UserId:    userId,
 	}
 
 	return PublishEvent(consumer, newMessage)
