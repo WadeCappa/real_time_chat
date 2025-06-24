@@ -4,6 +4,8 @@ github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525172518-67aa5a398d28 h1:S
 github.com/WadeCappa/real_time_chat/auth v0.0.0-20250525172518-67aa5a398d28/go.mod h1:Fv/imBkBEhBf5Efjvb3TlAMffaoJirAu5V3LGnS4sMg=
 github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624010922-5cc3ea442249 h1:mkBfoCSRFcgh5avyCdJsX3TpJ/5LOOHtdg4T6uQZlfY=
 github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624010922-5cc3ea442249/go.mod h1:kFHvA3Y0/VhtDFbNUUzmLLn/hFNv7SZOF/9aS9jdv6g=
+github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624011116-55b0feb03385 h1:R2b1EyC1nc3mjZ7ZIIYtkHBMpBM4qd+XI6dnKQSA9ZA=
+github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624011116-55b0feb03385/go.mod h1:kFHvA3Y0/VhtDFbNUUzmLLn/hFNv7SZOF/9aS9jdv6g=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=

@@ -3,7 +3,7 @@ module github.com/WadeCappa/real_time_chat/channel-manager
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624010922-5cc3ea442249
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624011116-55b0feb03385
 	github.com/jackc/pgx/v5 v5.7.5
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6

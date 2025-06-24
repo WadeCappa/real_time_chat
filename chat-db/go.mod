@@ -3,9 +3,9 @@ module github.com/WadeCappa/real_time_chat/chat-db
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624010922-5cc3ea442249
-	github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250624010922-5cc3ea442249
-	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250624010922-5cc3ea442249
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624011116-55b0feb03385
+	github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250624011116-55b0feb03385
+	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250624011116-55b0feb03385
 )
 
 require (
