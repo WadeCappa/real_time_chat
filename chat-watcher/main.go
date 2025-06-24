@@ -33,9 +33,8 @@ func getChannelManagerHostname() string {
 	return os.Getenv("CHANNEL_MANAGER_HOSTNAME")
 }
 
-func getPostgresUrl() string {
-	postgresHostname := os.Getenv("CHANNEL_MANAGER_POSTGRES_HOSTNAME")
-	return fmt.Sprintf("postgres://postgres:pass@%s/chat_db", postgresHostname)
+func getChatDbHostname() string {
+	return os.Getenv("CHAT_WRITER_HOSTNAME")
 }
 
 type chatWatcherServer struct {
@@ -59,7 +58,7 @@ func (v *createChannelEventVisitor) VisitNewChatMessageEvent(e events.NewChatMes
 }
 
 func getRecentMessages(channelId int64, consumer func(*chat_db.ReadMostRecentResponse) error) (*int64, error) {
-	conn, err := grpc.NewClient(getPostgresUrl(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(getChatDbHostname(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Printf("did not connect: %v\n", err)
 		return nil, err

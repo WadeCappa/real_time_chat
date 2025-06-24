@@ -35,10 +35,6 @@ func getChannelManagerHostname() string {
 	return os.Getenv("CHANNEL_MANAGER_HOSTNAME")
 }
 
-func getAuthHostname() string {
-	return os.Getenv("AUTHMASTER_HOSTNAME")
-}
-
 func getPostgresUrl() string {
 	postgresHostname := os.Getenv("CHANNEL_MANAGER_POSTGRES_HOSTNAME")
 	return fmt.Sprintf("postgres://postgres:pass@%s/chat_db", postgresHostname)

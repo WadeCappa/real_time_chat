@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/WadeCappa/real_time_chat/channel-manager/external_channel_manager"
 	"github.com/WadeCappa/real_time_chat/chat-db/chat_db"
@@ -60,9 +62,12 @@ func withConnection(addr string, consumer func(*grpc.ClientConn) error) error {
 
 func post() error {
 	return withConnection(*writeServerAddress, func(cc *grpc.ClientConn) error {
-		var message string
 		fmt.Print("Enter message: ")
-		fmt.Scanln(&message)
+		reader := bufio.NewReader(os.Stdin)
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatalf("failed to get input: %v", err)
+		}
 
 		newMetadata := metadata.Pairs("Authorization", *userToken)
 		newContext := metadata.NewOutgoingContext(context.Background(), newMetadata)
