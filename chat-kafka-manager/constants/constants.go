@@ -2,6 +2,7 @@ package constants
 
 import (
 	"fmt"
+	"os"
 )
 
 const (
@@ -17,4 +18,8 @@ func GetChannelTopic(channelId int64) string {
 
 func GetAllMessagesTopic() string {
 	return ALL_MESSAGES_TOPIC
+}
+
+func GetKafkaHostname() []string {
+	return []string{os.Getenv("KAFKA_HOSTNAME")}
 }

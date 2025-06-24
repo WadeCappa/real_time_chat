@@ -16,7 +16,7 @@ import (
 
 var (
 	serviceHostname     = fmt.Sprintf("localhost:%d", DEFAULT_PORT)
-	testingAuthHostname = DEFAULT_AUTH_HOSTNAME
+	testingAuthHostname = "localhost:50051"
 )
 
 func createRandomString() string {

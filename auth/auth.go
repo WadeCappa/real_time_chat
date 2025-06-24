@@ -2,12 +2,14 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/WadeCappa/authmaster/authmaster"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -21,8 +23,12 @@ const (
 	AUTH_HEADER_KEY  = "Authorization"
 )
 
-func getUser(token, authUrl string) (*int64, error) {
-	testResult, err := runWithConnection(authUrl, func(conn *grpc.ClientConn) testResult {
+func getAuthHostname() string {
+	return os.Getenv("AUTHMASTER_HOSTNAME")
+}
+
+func getUser(token, addr string) (*int64, error) {
+	testResult, err := runWithConnection(addr, func(conn *grpc.ClientConn) testResult {
 		userId, err := test(conn, token)
 		return testResult{userId: userId, err: err}
 	})
@@ -57,7 +63,7 @@ func test(conn *grpc.ClientConn, token string) (*int64, error) {
 }
 
 func runWithConnection[T any](addr string, f func(conn *grpc.ClientConn) T) (*T, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	log.Printf("attempting to connect to %s which resolved to %s", addr, conn.CanonicalTarget())
 	if err != nil {
 		fmt.Printf("did not connect: %v\n", err)
@@ -68,7 +74,8 @@ func runWithConnection[T any](addr string, f func(conn *grpc.ClientConn) T) (*T,
 	return &res, nil
 }
 
-func AuthenticateUser(ctx context.Context, authServiceUrl string) (*int64, error) {
+func AuthenticateUser(ctx context.Context) (*int64, error) {
+	authServiceUrl := getAuthHostname()
 	md, ok := metadata.FromIncomingContext(ctx)
 	fmt.Println(md)
 	if !ok {

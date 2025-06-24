@@ -4,6 +4,7 @@ package chatkafkamanager
 
 import (
 	"log"
+	"os"
 	"testing"
 
 	"github.com/IBM/sarama"
@@ -14,18 +15,19 @@ import (
 )
 
 func TestPublishWithoutError(t *testing.T) {
-	_, err := publisher.PublishChatMessageToChannel([]string{"localhost:9092"}, 0, "test message", 0)
+	os.Setenv("KAFKA_HOSTNAME", "localhost:9092")
+	_, err := publisher.PublishChatMessageToChannel(0, "test message", 0)
 	if err != nil {
 		t.Errorf("Failed to publish message %v", err)
 	}
 }
 
 func TestPublishAndReadMessage(t *testing.T) {
-	urls := []string{"localhost:9092"}
+	os.Setenv("KAFKA_HOSTNAME", "localhost:9092")
 	done := make(chan bool)
 	const channelId int64 = 12
 	go func() {
-		err := consumer.WatchChannel(urls, channelId, sarama.OffsetNewest, func(e events.Event, m consumer.Metadata) error {
+		err := consumer.WatchChannel(channelId, sarama.OffsetNewest, func(e events.Event, m consumer.Metadata) error {
 			name, err := events.GetName(e)
 			if err != nil || name == nil {
 				t.Errorf("failed to get name %v", err)
@@ -42,7 +44,7 @@ func TestPublishAndReadMessage(t *testing.T) {
 			t.Errorf("Failed to consumer from stream %v", err)
 		}
 	}()
-	_, err := publisher.PublishChatMessageToChannel(urls, 0, "test message", channelId)
+	_, err := publisher.PublishChatMessageToChannel(0, "test message", channelId)
 	if err != nil {
 		t.Errorf("Failed to publish message %v", err)
 	}

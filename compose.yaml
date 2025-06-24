@@ -42,6 +42,7 @@ services:
     volumes: 
       - kafka_data:/var/lib/kafka/data
   channels:
+    env_file: running-in-docker.config
     ports:
       - "50055:50055"
     build:
@@ -50,6 +51,7 @@ services:
     depends_on:
       - postgres
   watcher:
+    env_file: running-in-docker.config
     ports:
       - "50053:50053"
     build:
@@ -58,6 +60,7 @@ services:
     depends_on:
       - postgres
   writer:
+    env_file: running-in-docker.config
     ports:
       - "50052:50052"
     build:

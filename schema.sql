@@ -1,9 +1,9 @@
 
--- for the channel manager
 create database channel_manager_db;
 
 \c channel_manager_db
 
+;
 create table channels (
     id bigint,
     name text,
@@ -24,11 +24,11 @@ create table channel_members (
 
 create index idx_channel_members_by_channel_id on channel_members (channel_id);
 
--- for chat-db (the chat writer)
 create database chat_db;
 
 \c chat_db
 
+;
 create table if not exists messages (
     user_id bigint,
     message_id bigint,

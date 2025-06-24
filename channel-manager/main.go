@@ -5,22 +5,28 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/WadeCappa/real_time_chat/channel-manager/external_channel_manager"
 	"google.golang.org/grpc"
 )
 
 const (
-	DEFAULT_POSTGRES_URL  = "postgres://postgres:pass@localhost:5432/channel_manager_db"
-	DEFAULT_AUTH_HOSTNAME = "localhost:50051"
-	DEFAULT_PORT          = 50055
+	DEFAULT_PORT = 50055
 )
 
 var (
-	authHostname = flag.String("auth-hostname", DEFAULT_AUTH_HOSTNAME, "the hostname for the auth service")
-	postgresUrl  = flag.String("postgres-url", DEFAULT_POSTGRES_URL, "the hostname for postgres")
-	port         = flag.Int("port", DEFAULT_PORT, "port for this service")
+	port = flag.Int("port", DEFAULT_PORT, "port for this service")
 )
+
+func getAuthHostname() string {
+	return os.Getenv("AUTHMASTER_HOSTNAME")
+}
+
+func getPostgresUrl() string {
+	postgresHostname := os.Getenv("CHANNEL_MANAGER_POSTGRES_HOSTNAME")
+	return fmt.Sprintf("postgres://postgres:pass@%s/channel_manager_db", postgresHostname)
+}
 
 func main() {
 	flag.Parse()

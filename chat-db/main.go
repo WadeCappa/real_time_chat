@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"slices"
 	"time"
 
@@ -22,21 +23,26 @@ import (
 )
 
 const (
-	DEFAULT_KAFKA_HOSTNAME           = "localhost:9092"
-	DEFAULT_AUTH_HOSTNAME            = "localhost:50051"
-	DEFAULT_POSTGRES_URL             = "postgres://postgres:pass@localhost:5432/chat_db"
-	DEFAULT_CHANNEL_MANAGER_HOSTNAME = "localhost:50055"
-	DEFAULT_PORT                     = 50052
-	DEFAULT_LOAD_BATCH_SIZE          = 3
+	DEFAULT_PORT            = 50052
+	DEFAULT_LOAD_BATCH_SIZE = 10
 )
 
 var (
-	authHostname            = flag.String("auth-hostname", DEFAULT_AUTH_HOSTNAME, "the hostname for the auth service")
-	kafkaHostname           = flag.String("kafka-hostname", DEFAULT_KAFKA_HOSTNAME, "the hostname for kafka")
-	postgresUrl             = flag.String("postgres-hostname", DEFAULT_POSTGRES_URL, "the hostname for postgres")
-	channelManangerHostname = flag.String("channel-manager-hostname", DEFAULT_CHANNEL_MANAGER_HOSTNAME, "the hostname for the channel manager")
-	port                    = flag.Int("port", DEFAULT_PORT, "port for this service")
+	port = flag.Int("port", DEFAULT_PORT, "port for this service")
 )
+
+func getChannelManagerHostname() string {
+	return os.Getenv("CHANNEL_MANAGER_HOSTNAME")
+}
+
+func getAuthHostname() string {
+	return os.Getenv("AUTHMASTER_HOSTNAME")
+}
+
+func getPostgresUrl() string {
+	postgresHostname := os.Getenv("CHANNEL_MANAGER_POSTGRES_HOSTNAME")
+	return fmt.Sprintf("postgres://postgres:pass@%s/chat_db", postgresHostname)
+}
 
 type chatDbServer struct {
 	chat_db.ChatdbServer
@@ -51,7 +57,10 @@ type message struct {
 }
 
 func canUserWriteToChannel(channelId, userId int64) error {
-	conn, err := grpc.NewClient(*channelManangerHostname, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(
+		getChannelManagerHostname(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -75,7 +84,7 @@ func canUserWriteToChannel(channelId, userId int64) error {
 func (s *chatDbServer) PublishMessage(
 	ctx context.Context,
 	request *chat_db.PublishMessageRequest) (*chat_db.PublishMessageResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, *authHostname)
+	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
 	if err != nil {
 		return nil, fmt.Errorf("failed to authenticate user: %v", err)
 	}
@@ -85,16 +94,12 @@ func (s *chatDbServer) PublishMessage(
 		return nil, fmt.Errorf("user does not have access: %v", err)
 	}
 
-	offset, err := publisher.PublishChatMessageToChannel(
-		[]string{*kafkaHostname},
-		*userId,
-		request.Message,
-		request.ChannelId)
+	offset, err := publisher.PublishChatMessageToChannel(*userId, request.Message, request.ChannelId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to kafka: %v", err)
 	}
 
-	res := store.Call(*postgresUrl, func(c *pgx.Conn) result.Result[any] {
+	res := store.Call(getPostgresUrl(), func(c *pgx.Conn) result.Result[any] {
 		tag, err := c.Exec(context.Background(),
 			"insert into messages (user_id, message_id, channel_id, time_posted, content) values ($1, $2, $3, $4, $5)",
 			userId,
@@ -120,7 +125,7 @@ func (s *chatDbServer) ReadMostRecent(
 	request *chat_db.ReadMostRecentRequest,
 	server grpc.ServerStreamingServer[chat_db.ReadMostRecentResponse]) error {
 
-	result := store.Call(*postgresUrl, func(c *pgx.Conn) result.Result[[]chat_db.ReadMostRecentResponse] {
+	result := store.Call(getPostgresUrl(), func(c *pgx.Conn) result.Result[[]chat_db.ReadMostRecentResponse] {
 
 		rows, err := c.Query(
 			context.Background(),

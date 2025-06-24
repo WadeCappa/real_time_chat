@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 
 	"github.com/IBM/sarama"
 	"github.com/WadeCappa/real_time_chat/auth"
@@ -21,20 +22,21 @@ import (
 )
 
 const (
-	DEFAULT_KAFKA_HOSTNAME        = "localhost:9092"
-	DEFAULT_AUTH_HOSTNAME         = "localhost:50051"
-	DEFAULT_CHAT_DB_HOSTNAME      = "localhost:50052"
-	DEFAULT_CHAT_MANAGER_HOSTNAME = "localhost:50055"
-	DEFAULT_PORT                  = 50053
+	DEFAULT_PORT = 50053
 )
 
 var (
-	authHostname        = flag.String("auth-hostname", DEFAULT_AUTH_HOSTNAME, "the hostname for the auth service")
-	kafkaHostname       = flag.String("kafka-hostname", DEFAULT_KAFKA_HOSTNAME, "the hostname for kafka")
-	chatDbHostname      = flag.String("chat-db-hostname", DEFAULT_CHAT_DB_HOSTNAME, "the hostname for the chat db service")
-	chatManagerHostname = flag.String("chat-manager-hostname", DEFAULT_CHAT_MANAGER_HOSTNAME, "hostname for the chat manager")
-	port                = flag.Int("port", DEFAULT_PORT, "port for this service")
+	port = flag.Int("port", DEFAULT_PORT, "port for this service")
 )
+
+func getChannelManagerHostname() string {
+	return os.Getenv("CHANNEL_MANAGER_HOSTNAME")
+}
+
+func getPostgresUrl() string {
+	postgresHostname := os.Getenv("CHANNEL_MANAGER_POSTGRES_HOSTNAME")
+	return fmt.Sprintf("postgres://postgres:pass@%s/chat_db", postgresHostname)
+}
 
 type chatWatcherServer struct {
 	chat_watcher.ChatwatcherserverServer
@@ -57,7 +59,7 @@ func (v *createChannelEventVisitor) VisitNewChatMessageEvent(e events.NewChatMes
 }
 
 func getRecentMessages(channelId int64, consumer func(*chat_db.ReadMostRecentResponse) error) (*int64, error) {
-	conn, err := grpc.NewClient(*chatDbHostname, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(getPostgresUrl(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Printf("did not connect: %v\n", err)
 		return nil, err
@@ -96,7 +98,7 @@ func getRecentMessages(channelId int64, consumer func(*chat_db.ReadMostRecentRes
 }
 
 func canUserWatchChannel(channelId, userId int64) error {
-	conn, err := grpc.NewClient(*chatManagerHostname, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(getChannelManagerHostname(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -119,7 +121,7 @@ func canUserWatchChannel(channelId, userId int64) error {
 
 func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelRequest, server grpc.ServerStreamingServer[chat_watcher.WatchChannelResponse]) error {
 
-	userId, err := auth.AuthenticateUser(server.Context(), *authHostname)
+	userId, err := auth.AuthenticateUser(server.Context())
 	if err != nil {
 		return fmt.Errorf("failed authenticaion: %v", err)
 	}
@@ -152,7 +154,7 @@ func (s *chatWatcherServer) WatchChannel(request *chat_watcher.WatchChannelReque
 	}
 
 	log.Printf("read up to offset %d\n", *offset)
-	return consumer.WatchChannel([]string{*kafkaHostname}, request.ChannelId, sarama.OffsetNewest, func(e events.Event, m consumer.Metadata) error {
+	return consumer.WatchChannel(request.ChannelId, sarama.OffsetNewest, func(e events.Event, m consumer.Metadata) error {
 		log.Println(e)
 		v := createChannelEventVisitor{}
 		v.e = chat_watcher.ChannelEvent{

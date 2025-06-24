@@ -93,12 +93,12 @@ func watchForWritesFromTopic(topic string, brokersUrl []string, offset int64, ev
 	return nil
 }
 
-func WatchForAllWrites(brokersUrl []string, offset int64, eventConsumer func(events.Event, Metadata) error) error {
+func WatchForAllWrites(offset int64, eventConsumer func(events.Event, Metadata) error) error {
 	topic := constants.GetAllMessagesTopic()
-	return watchForWritesFromTopic(topic, brokersUrl, offset, eventConsumer)
+	return watchForWritesFromTopic(topic, constants.GetKafkaHostname(), offset, eventConsumer)
 }
 
-func WatchChannel(brokersUrl []string, channelId, offset int64, eventConsumer func(events.Event, Metadata) error) error {
+func WatchChannel(channelId, offset int64, eventConsumer func(events.Event, Metadata) error) error {
 	topic := constants.GetChannelTopic(channelId)
-	return watchForWritesFromTopic(topic, brokersUrl, offset, eventConsumer)
+	return watchForWritesFromTopic(topic, constants.GetKafkaHostname(), offset, eventConsumer)
 }
