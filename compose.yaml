@@ -15,34 +15,28 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    hostname: zookeeper
+    image: confluentinc/cp-zookeeper:7.4.4
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - 2181:2181
     volumes: 
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_log:/var/lib/zookeeper/log
   broker:
-    image: confluentinc/cp-kafka:latest
-    hostname: broker
+    image: confluentinc/cp-kafka:7.4.4
     depends_on:
       - zookeeper
-    ports:
-      - 9092:9092
-      - 29092:29092
     environment:
+      KAFKA_KRAFT_MODE: "false"
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_INTERNAL://localhost:19092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     volumes: 
       - kafka_data:/var/lib/kafka/data
   channels:
-    env_file: running-in-docker.config
+    env_file: running-in-docker.env
     ports:
       - "50055:50055"
     build:
@@ -51,7 +45,7 @@ services:
     depends_on:
       - postgres
   watcher:
-    env_file: running-in-docker.config
+    env_file: running-in-docker.env
     ports:
       - "50053:50053"
     build:
@@ -60,7 +54,7 @@ services:
     depends_on:
       - postgres
   writer:
-    env_file: running-in-docker.config
+    env_file: running-in-docker.env
     ports:
       - "50052:50052"
     build:
