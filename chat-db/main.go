@@ -84,7 +84,7 @@ func canUserWriteToChannel(channelId, userId int64) error {
 func (s *chatDbServer) PublishMessage(
 	ctx context.Context,
 	request *chat_db.PublishMessageRequest) (*chat_db.PublishMessageResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
+	userId, err := auth.AuthenticateUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to authenticate user: %v", err)
 	}

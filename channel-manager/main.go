@@ -19,10 +19,6 @@ var (
 	port = flag.Int("port", DEFAULT_PORT, "port for this service")
 )
 
-func getAuthHostname() string {
-	return os.Getenv("AUTHMASTER_HOSTNAME")
-}
-
 func getPostgresUrl() string {
 	postgresHostname := os.Getenv("CHANNEL_MANAGER_POSTGRES_HOSTNAME")
 	return fmt.Sprintf("postgres://postgres:pass@%s/channel_manager_db", postgresHostname)

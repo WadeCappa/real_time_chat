@@ -16,7 +16,7 @@ type externalChatManangerServer struct {
 }
 
 func (s *externalChatManangerServer) AddToChannel(ctx context.Context, request *external_channel_manager.AddToChannelRequest) (*external_channel_manager.AddToChannelResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
+	userId, err := auth.AuthenticateUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -24,7 +24,7 @@ func (s *externalChatManangerServer) AddToChannel(ctx context.Context, request *
 }
 
 func (s *externalChatManangerServer) ChangeChannelVisibility(ctx context.Context, request *external_channel_manager.ChangeChannelVisibilityRequest) (*external_channel_manager.ChangeChannelVisibilityResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
+	userId, err := auth.AuthenticateUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -32,7 +32,7 @@ func (s *externalChatManangerServer) ChangeChannelVisibility(ctx context.Context
 }
 
 func (s *externalChatManangerServer) CreateChannel(ctx context.Context, request *external_channel_manager.CreateChannelRequest) (*external_channel_manager.CreateChannelResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
+	userId, err := auth.AuthenticateUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -40,7 +40,7 @@ func (s *externalChatManangerServer) CreateChannel(ctx context.Context, request 
 }
 
 func (s *externalChatManangerServer) DeleteChannel(ctx context.Context, request *external_channel_manager.DeleteChannelRequest) (*external_channel_manager.DeleteChannelResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
+	userId, err := auth.AuthenticateUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -48,7 +48,7 @@ func (s *externalChatManangerServer) DeleteChannel(ctx context.Context, request 
 }
 
 func (s *externalChatManangerServer) JoinChannel(ctx context.Context, request *external_channel_manager.JoinChannelRequest) (*external_channel_manager.JoinChannelResponse, error) {
-	userId, err := auth.AuthenticateUser(ctx, getAuthHostname())
+	userId, err := auth.AuthenticateUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -56,7 +56,7 @@ func (s *externalChatManangerServer) JoinChannel(ctx context.Context, request *e
 }
 
 func (s *externalChatManangerServer) GetChannels(request *external_channel_manager.GetChannelsRequest, server grpc.ServerStreamingServer[external_channel_manager.GetChannelsResponse]) error {
-	userId, err := auth.AuthenticateUser(server.Context(), getAuthHostname())
+	userId, err := auth.AuthenticateUser(server.Context())
 	if err != nil {
 		return fmt.Errorf("failed to get user: %v", err)
 	}

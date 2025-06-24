@@ -3,14 +3,14 @@ module github.com/WadeCappa/real_time_chat/chat-db
 go 1.23.9
 
 require (
-	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250616203213-549210e853cf
-	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250616203213-549210e853cf
+	github.com/WadeCappa/real_time_chat/auth v0.0.0-20250624010922-5cc3ea442249
+	github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250624010922-5cc3ea442249
+	github.com/WadeCappa/real_time_chat/chat-kafka-manager v0.0.0-20250624010922-5cc3ea442249
 )
 
 require (
 	github.com/IBM/sarama v1.45.2 // indirect
 	github.com/WadeCappa/authmaster v0.0.1 // indirect
-	github.com/WadeCappa/real_time_chat/channel-manager v0.0.0-20250616204226-70469015f8e2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
