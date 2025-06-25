@@ -37,8 +37,6 @@ services:
       - kafka_data:/var/lib/kafka/data
   channels:
     env_file: running-in-docker.env
-    ports:
-      - "50055:50055"
     build:
       context: channel-manager
       dockerfile: Dockerfile
@@ -46,8 +44,6 @@ services:
       - postgres
   watcher:
     env_file: running-in-docker.env
-    ports:
-      - "50053:50053"
     build:
       context: chat-watcher
       dockerfile: Dockerfile
@@ -55,8 +51,6 @@ services:
       - postgres
   writer:
     env_file: running-in-docker.env
-    ports:
-      - "50052:50052"
     build:
       context: chat-db
       dockerfile: Dockerfile
