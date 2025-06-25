@@ -7,7 +7,7 @@ import { chatwatcherserverClient } from "./proto/Chat-watcherServiceClientPb";
 import { WatchChannelRequest } from "./proto/chat-watcher_pb";
 import { Message } from "./Message";
 
-const EnvoyURL = "http://localhost:8000"
+const EnvoyURL = process.env.REACT_APP_BASE_URL ?? "http://localhost:8080"
 
 const publishMessage = async (name: string, token: string, channelId: number) => {
   const client = new chatdbClient(EnvoyURL);

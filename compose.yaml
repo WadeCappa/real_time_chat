@@ -63,11 +63,12 @@ services:
     depends_on:
       - postgres
   chat_client:
+    env_file: running-in-docker.env
     build:
       context: chat-client
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "8081:3000"
   envoy_service:
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -75,7 +76,7 @@ services:
       context: .
       dockerfile: Dockerfile-envoy
     ports:
-      - "8000:8000"
+      - "8080:8000"
     volumes:
       - ./envoy.yaml:/etc/envoy/envoy.yaml
 volumes:
