@@ -4,7 +4,8 @@ import { GetChannelsRequest } from "./proto/external-channel-manager_pb";
 import { externalchannelmanagerClient } from "./proto/External-channel-managerServiceClientPb";
 import { chatdbClient } from "./proto/Chat-dbServiceClientPb"; 
 import { chatwatcherserverClient } from "./proto/Chat-watcherServiceClientPb"; 
-import { WatchChannelRequest, ChannelEvent } from "./proto/chat-watcher_pb";
+import { WatchChannelRequest } from "./proto/chat-watcher_pb";
+import { Message } from "./Message";
 
 const EnvoyURL = "http://localhost:8000"
 
@@ -29,7 +30,7 @@ function App() {
   const [token, setToken] = useState("");
   const [selectedChannelId, setSelectedChannelId] = useState("");
   const [channels, setChannels] = useState<number[]>([]);
-  const [messages, setMessages] = useState<ChannelEvent[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
 
   const findChannels = async (token: string) => {
     const client = new externalchannelmanagerClient(EnvoyURL);
@@ -64,7 +65,14 @@ function App() {
     response.on('data', resp => {
       console.log(JSON.stringify(resp))
       if (resp.getEvent() !== undefined) {
-        setMessages(prevMessages => [...prevMessages, resp.getEvent()!])
+        if (resp.getEvent()!.getNewmessage() !== undefined) {
+          const content = resp.getEvent()!.getNewmessage()!.getConent()
+          const userId = resp.getEvent()!.getNewmessage()!.getUserid()
+          const posted = resp.getEvent()!.getTimepostedunixtime()
+          console.log(resp.getEvent()!.getTimepostedunixtime())
+          const newMessage: Message = {userId: userId, content: content, posted: new Date(posted)}
+          setMessages(prevMessages => [...prevMessages, newMessage])
+        }
       }
     })
     response.on('error', err => {
@@ -115,15 +123,32 @@ function App() {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <button onClick={onClickGreet}>greet</button>
+        <button onClick={onClickGreet}>post</button>
         {name && <div id="response"></div>}
       </div>
       <div>
-         {messages.map((message, index) => (
-            <div key={index}>
-              {JSON.stringify(message)}
-            </div>
-          ))}
+        <table >
+          <tr>
+            <th>Time Posted</th>
+            <th>User ID</th>
+            <th>Message</th>
+          </tr>
+          {messages ? messages.map(message => {
+            return (
+              <tr>
+                <td>
+                  {message.posted.toDateString()}
+                </td>
+                <td>
+                  {message.userId}
+                </td>
+                <td>
+                  {message.content}
+                </td>
+              </tr>
+            )
+          }) : "Find you user token and select a channel"}
+        </table>
       </div>
     </div>
   );
