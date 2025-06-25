@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -13,17 +12,14 @@ import (
 	"github.com/WadeCappa/real_time_chat/chat-db/chat_db"
 	"github.com/WadeCappa/real_time_chat/chat-watcher/chat_watcher"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
 
 const (
-	NO_COMMAND                       = "no-command"
-	DEFAULT_WRITE_SERVER_URL         = "localhost:50052"
-	DEFAULT_WATCH_SERVER_URL         = "localhost:50053"
-	DEFAULT_CHANNEL_MANAGER_HOSTNAME = "localhost:50055"
-
+	NO_COMMAND         = "no-command"
 	NO_TOKEN           = ""
+	NO_ADDRESS         = ""
 	DEFAULT_CHANNEL_ID = 0
 
 	POST_COMMAND           = "post"
@@ -40,17 +36,14 @@ var commands = map[string]func() error{
 }
 
 var (
-	writeServerAddress     = flag.String("write-server-url", DEFAULT_WRITE_SERVER_URL, "the address for a write server to communicate with")
-	watchServerAddress     = flag.String("watch-server-url", DEFAULT_WATCH_SERVER_URL, "the address for a watch server to communicate with")
-	channelManagerHostname = flag.String("channel-manager-hostname", DEFAULT_CHANNEL_MANAGER_HOSTNAME, "the address for the channel manager server")
-
+	addr      = flag.String("addr", NO_ADDRESS, "the server to hit")
 	cmd       = flag.String("cmd", NO_COMMAND, "choose one of the following; ")
 	userToken = flag.String("token", NO_TOKEN, "the user token to perform an operation with")
 	channelId = flag.Int64("channel", DEFAULT_CHANNEL_ID, "the channel id on which to operate")
 )
 
-func withConnection(addr string, consumer func(*grpc.ClientConn) error) error {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+func withConnection(consumer func(*grpc.ClientConn) error) error {
+	conn, err := grpc.NewClient(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -61,7 +54,7 @@ func withConnection(addr string, consumer func(*grpc.ClientConn) error) error {
 }
 
 func post() error {
-	return withConnection(*writeServerAddress, func(cc *grpc.ClientConn) error {
+	return withConnection(func(cc *grpc.ClientConn) error {
 		fmt.Print("Enter message: ")
 		reader := bufio.NewReader(os.Stdin)
 		message, err := reader.ReadString('\n')
@@ -86,12 +79,12 @@ func post() error {
 }
 
 func getChannels() error {
-	return withConnection(*channelManagerHostname, func(cc *grpc.ClientConn) error {
+	return withConnection(func(cc *grpc.ClientConn) error {
 		newMetadata := metadata.Pairs("Authorization", *userToken)
 		newContext := metadata.NewOutgoingContext(context.Background(), newMetadata)
 
 		c := external_channel_manager.NewExternalchannelmanagerClient(cc)
-		response, err := c.GetAllChannels(newContext, &external_channel_manager.GetAllChannelsRequest{})
+		response, err := c.GetChannels(newContext, &external_channel_manager.GetChannelsRequest{PrefixSearch: ""})
 
 		if err != nil {
 			return fmt.Errorf("failed to send message: %v", err)
@@ -109,7 +102,7 @@ func getChannels() error {
 }
 
 func createChannel() error {
-	return withConnection(*channelManagerHostname, func(cc *grpc.ClientConn) error {
+	return withConnection(func(cc *grpc.ClientConn) error {
 		var name string
 		fmt.Print("Enter channel name: ")
 		fmt.Scanln(&name)
@@ -134,7 +127,7 @@ func createChannel() error {
 }
 
 func watch() error {
-	return withConnection(*watchServerAddress, func(cc *grpc.ClientConn) error {
+	return withConnection(func(cc *grpc.ClientConn) error {
 		newMetadata := metadata.Pairs("Authorization", *userToken)
 		newContext := metadata.NewOutgoingContext(context.Background(), newMetadata)
 

@@ -1,0 +1,23 @@
+FROM    alpine:3.15.1 AS build
+
+WORKDIR /app
+
+RUN     apk add --no-cache protoc
+
+COPY    ./chat-db/chat_db/chat-db.proto .
+COPY    ./chat-watcher/chat_watcher/chat-watcher.proto .
+COPY    ./channel-manager/external_channel_manager/external-channel-manager.proto .
+
+# build proto descriptors
+RUN     protoc --include_imports --include_source_info \
+            --descriptor_set_out=chat-db.pb chat-db.proto
+RUN     protoc --include_imports --include_source_info \
+            --descriptor_set_out=chat-watcher.pb chat-watcher.proto
+RUN     protoc --include_imports --include_source_info \
+            --descriptor_set_out=external-channel-manager.pb external-channel-manager.proto
+
+FROM    envoyproxy/envoy:v1.22.0
+
+COPY    --from=build /app/chat-db.pb /tmp/
+COPY    --from=build /app/chat-watcher.pb /tmp/
+COPY    --from=build /app/external-channel-manager.pb /tmp/
