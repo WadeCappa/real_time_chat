@@ -1,13 +1,18 @@
-FROM golang:1.23
+FROM golang:1.23 AS build
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
+
 RUN go mod download
-COPY . ./
 
-COPY *.go ./
+COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /server
+RUN go build -ldflags="-linkmode external -extldflags -static" -tags netgo -o /app/server
+
+### 
+FROM scratch 
+
+COPY --from=build /app/server server
 
 CMD ["/server"]
