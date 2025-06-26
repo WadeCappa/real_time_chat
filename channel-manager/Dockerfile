@@ -14,5 +14,6 @@ RUN go build -ldflags="-linkmode external -extldflags -static" -tags netgo -o /a
 FROM scratch 
 
 COPY --from=build /app/server server
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 CMD ["/server"]
