@@ -1,17 +1,23 @@
-FROM node:24-alpine
+# Build stage
+FROM node:24-alpine AS build
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
 ENV NODE_ENV production
 
 COPY package*.json ./
 
-RUN npm install serve && npm ci --production
+RUN npm ci 
 
 COPY . .
 
 RUN npm run build
 
-EXPOSE 8081
+# Deploy stage
+FROM nginx:1.29-alpine
 
-CMD ["./node_modules/.bin/serve", "-s", "build", "-l", "8081"]
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+COPY --from=build /usr/src/app/build/ /usr/share/nginx/html
+
+EXPOSE 8081
